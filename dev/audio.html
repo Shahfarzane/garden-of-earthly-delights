@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soundscape harness</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; padding: 16px; font: 13px/1.4 ui-monospace, Menlo, monospace; background: #15161a; color: #ddd; }
+    h1 { font-size: 15px; margin: 0 0 10px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+    #map { width: 900px; max-width: 100%; background: #0d0e11; border: 1px solid #333; cursor: crosshair; touch-action: none; }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+    button { background: #2a2c33; color: #eee; border: 1px solid #555; border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+    button:hover { background: #3a3d47; }
+    button.solo.on { background: #d8b74a; color: #000; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    #voices li { padding: 2px 6px; margin: 2px 0; background: #1d1f25; display: flex; gap: 8px; align-items: center; }
+    #active li { padding: 1px 0; }
+    .name { font-weight: 600; }
+    .dim { color: #888; }
+    .col { min-width: 260px; }
+    table { border-collapse: collapse; margin-top: 8px; }
+    th, td { border: 1px solid #333; padding: 2px 8px; text-align: left; }
+    tr.pass td:last-child { color: #7fd37f; }
+    tr.fail td:last-child, p.fail, pre.fail { color: #ff7f7f; }
+    p.pass { color: #7fd37f; }
+    #beds { color: #9ab; margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <h1>The Garden of Earthly Delights: soundscape harness</h1>
+  <div class="controls">
+    <button id="start">Start audio</button>
+    <label><input type="checkbox" id="mute" /> mute</label>
+    <label>mode <select id="mode"><option value="nature">nature (no music)</option><option value="period">period (consort)</option></select></label>
+    <label>volume <input type="range" id="volume" min="0" max="1" step="0.01" value="1" /></label>
+    <label>zoom <input type="range" id="zoom" min="0" max="1" step="0.001" value="0" /> <span id="zoomVal"></span> css px / world px</label>
+    <span>cues:</span><span id="cues"></span>
+    <label>focus <select id="focus"></select></label>
+    <label><input type="checkbox" id="jump" checked /> jump view to focus</label>
+    <button id="runTest">Run offline test</button>
+  </div>
+  <div class="row">
+    <div>
+      <canvas id="map" width="900"></canvas>
+      <div id="beds"></div>
+      <p class="dim">Click or drag on the map to move the view centre. Circles are sound zones (museum POAs tinted by panel, story points in white); lit circles are playing.</p>
+      <ul id="active"></ul>
+    </div>
+    <div class="col">
+      <h2 style="font-size:13px;margin:0 0 6px">Voices</h2>
+      <ul id="voices"></ul>
+    </div>
+  </div>
+  <div id="testOut"></div>
+  <script type="module" src="/src/audio/devHarness.js"></script>
+</body>
+</html>

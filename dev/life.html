@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Living layer: sprites and motion</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #1b1916; color: #d9d2c2; font: 13px/1.4 ui-sans-serif, system-ui, sans-serif; }
+    header { position: sticky; top: 0; z-index: 2; display: flex; gap: 20px; align-items: baseline; padding: 10px 16px; background: #2a2622; border-bottom: 1px solid #3a352f; }
+    header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+    header .stat { font-variant-numeric: tabular-nums; color: #e8c53a; }
+    header button { background: #3a352f; color: inherit; border: 1px solid #55504a; border-radius: 4px; padding: 3px 10px; cursor: pointer; }
+    main { padding: 16px; }
+    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #9a9385; margin: 22px 0 10px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(450px, 1fr)); gap: 12px; }
+    .card { background: #24211d; border: 1px solid #353028; border-radius: 6px; padding: 8px; }
+    .card .name { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .card .name b { font-weight: 600; }
+    .card .name span { color: #8a8375; }
+    .sizes { display: flex; gap: 6px; align-items: flex-end; }
+    .sizes canvas { border-radius: 3px; display: block; }
+    .variants { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+    .variants canvas { border-radius: 3px; }
+    .variants .v { text-align: center; font-size: 10px; color: #8a8375; }
+    #sandbox { width: 100%; max-width: 1400px; display: block; border-radius: 6px; border: 1px solid #353028; }
+    .legend { color: #8a8375; margin-top: 6px; }
+    code { color: #c9bfa8; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Living layer</h1>
+    <div>fps <span class="stat" id="fps">0</span></div>
+    <div>300 mixed sprites @ 8 px: <span class="stat" id="perf8">...</span> ms/frame</div>
+    <div>@ 40 px: <span class="stat" id="perf40">...</span> ms/frame</div>
+    <button id="rerun">re-run perf</button>
+    <div id="err" style="color:#e06a4a"></div>
+  </header>
+  <main>
+    <h2>Sprites at 8, 40, 200 px body length</h2>
+    <div class="grid" id="gallery"></div>
+    <h2>Motion sandbox</h2>
+    <canvas id="sandbox"></canvas>
+    <div class="legend">left: Eden (flock streaming from the rock cave and returning, pond with swimPath swans and ducks, wander insects, frog) · middle: Garden (leap fish with droplet splashes, bubbles, swallows, goldfinch flying flock) · right: Hell (particles: embers, smoke, ash; bats and ravens flocking, lightBeam, flame).</div>
+  </main>
+
+  <script type="module">
+    import { sprites, spriteNames, drawSprite, drawItem } from '/src/life/sprites.js';
+    import { flock, swimPath, wander, particles, leap, perch } from '/src/life/motion.js';
+
+    window.addEventListener('error', (e) => { document.getElementById('err').textContent = e.message; });
+    window.addEventListener('unhandledrejection', (e) => { document.getElementById('err').textContent = String(e.reason); });
+
+    const DPR = Math.min(2, window.devicePixelRatio || 1);
+    const BG = {
+      meadow: ['#8f9b3e', '#6f7d2a'],
+      water: ['#5a8fb5', '#3a6a8e'],
+      night: ['#2b241f', '#110d0b'],
+      sky: ['#bfd3d6', '#8fb0bd'],
+    };
+    function paintBg(ctx, w, h, kind) {
+      const [a, b] = BG[kind] || BG.meadow;
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, a); g.addColorStop(1, b);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      // a little Bosch craquelure-like texture so the overlays read against paint, not flat colour
+      ctx.globalAlpha = 0.08; ctx.strokeStyle = kind === 'night' ? '#fff' : '#000'; ctx.lineWidth = 1;
+      for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.moveTo((i * 37) % w, 0); ctx.lineTo((i * 53 + 20) % w, h); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+
+    // ----- gallery -----
+    const gallery = document.getElementById('gallery');
+    const cells = []; // { ctx, w, h, name, px, bg, o }
+    function makeCanvas(parent, w, h) {
+      const c = document.createElement('canvas');
+      c.width = w * DPR; c.height = h * DPR; c.style.width = w + 'px'; c.style.height = h + 'px';
+      parent.appendChild(c);
+      const ctx = c.getContext('2d');
+      ctx.scale(DPR, DPR);
+      return { c, ctx };
+    }
+    for (const name of spriteNames) {
+      const s = sprites[name];
+      const card = document.createElement('div'); card.className = 'card';
+      card.innerHTML = `<div class="name"><b>${name}</b><span>${s.tags.join(', ')} · ${s.kind}</span></div>`;
+      const row = document.createElement('div'); row.className = 'sizes';
+      for (const [px, w, h] of [[8, 40, 40], [40, 90, 90], [200, 300, 300]]) {
+        const { ctx } = makeCanvas(row, w, h);
+        cells.push({ ctx, w, h, name, px, bg: s.bg, o: { px } });
+      }
+      card.appendChild(row);
+      const variants = [];
+      for (const p of s.palettes || []) variants.push({ label: p, o: { palette: p } });
+      for (const p of s.poses || []) if (p !== 'perch') variants.push({ label: p, o: { pose: p } });
+      if (name === 'butterfly' || name === 'dragonfly') variants.push({ label: 'rest', o: { rest: true } });
+      if (name === 'frog') variants.push({ label: 'hop', o: { hop: 1 } });
+      if (name === 'fish') variants.push({ label: 'bend', o: { bend: 1, wag: 0 } });
+      if (name === 'heron' || name === 'swan' || name === 'duck') variants.push({ label: 'dip', o: { dip: 1 } });
+      if (variants.length) {
+        const vrow = document.createElement('div'); vrow.className = 'variants';
+        for (const v of variants) {
+          const wrap = document.createElement('div'); wrap.className = 'v';
+          const { ctx } = makeCanvas(wrap, 60, 60);
+          wrap.appendChild(document.createTextNode(v.label));
+          vrow.appendChild(wrap);
+          cells.push({ ctx, w: 60, h: 60, name, px: 48, bg: s.bg, o: { px: 48, ...v.o } });
+        }
+        card.appendChild(vrow);
+      }
+      gallery.appendChild(card);
+    }
+
+    const visible = new Set();
+    const io = new IntersectionObserver((entries) => { for (const e of entries) { if (e.isIntersecting) visible.add(e.target); else visible.delete(e.target); } }, { rootMargin: '100px' });
+    for (const cell of cells) { cell.ctx.canvas.__cell = cell; io.observe(cell.ctx.canvas); }
+    function drawCell(cell, t) {
+      const { ctx, w, h, name, px, bg, o } = cell;
+      paintBg(ctx, w, h, bg);
+      ctx.save();
+      if (name === 'lightBeam') { ctx.translate(w * 0.08, h * 0.5); ctx.rotate(0.25); ctx.scale(px * 0.9, px * 0.9); }
+      else { ctx.translate(w / 2, h / 2 + (name === 'heron' ? px * 0.06 : name === 'swan' ? px * 0.14 : 0)); ctx.scale(px, px); }
+      drawSprite(ctx, name, t, o);
+      ctx.restore();
+    }
+
+    // ----- sandbox -----
+    const sb = document.getElementById('sandbox');
+    const sbW = 1400, sbH = 560;
+    sb.width = sbW * DPR; sb.height = sbH * DPR;
+    const sctx = sb.getContext('2d');
+    io.observe(sb);
+    sctx.scale(DPR, DPR);
+    const colW = sbW / 3;
+
+    // Eden: rock cave at the top left, pond polygon at the bottom
+    const rock = { x: 80, y: 120 };
+    const edenFlock = flock({ count: 36, bounds: { x: 20, y: 20, w: colW - 40, h: 260 }, home: rock, seed: 7, speed: 70, tour: 12, stagger: 0.22 });
+    const pond = [[40, 360], [160, 320], [300, 330], [420, 380], [430, 470], [330, 530], [150, 540], [50, 480]];
+    const swans = swimPath({ polygon: pond, speed: 18, seed: 3, count: 2, pause: 4 });
+    const ducks = swimPath({ polygon: pond, speed: 24, seed: 11, count: 4, pause: 2 });
+    const butterflies = wander({ center: { x: 300, y: 250 }, radius: 110, speed: 28, count: 5, seed: 5, jitter: 3, settle: 3 });
+    const dragonflies = wander({ center: { x: 220, y: 340 }, radius: 90, speed: 60, count: 2, seed: 9, jitter: 0.8, flutter: 0.1, dart: 1 });
+    const herons = perch({ points: [{ x: 60, y: 440 }, { x: 395, y: 390 }], seed: 2 });
+    const frogs = perch({ points: [{ x: 120, y: 505, angle: -0.6 }], seed: 4 });
+
+    // Garden: fish leaps with droplet splashes, bubbles, swallows
+    const gx = colW;
+    const splashes = particles({ emitter: { x: 0, y: 0, w: 10, h: 2 }, rate: 0, life: 0.9, velocity: { x: 0, y: -90 }, gravity: 260, spread: 0.9, seed: 21, max: 160, kind: 'droplet', scaleRange: [0.5, 1.2] });
+    const fishLeap = leap({
+      from: { x: gx + 120, y: 430 }, to: { x: gx + 300, y: 430 }, height: 140, period: 5, seed: 13, count: 2, duration: 1.3, mirror: true,
+      splash(f, phase) { splashes.emitter.x = f.x; splashes.emitter.y = f.y; splashes.emit(phase === 'entry' ? 22 : 12); },
+    });
+    const bubbles = particles({ emitter: { x: gx + 330, y: 520, w: 60, h: 4 }, rate: 6, life: 3.2, velocity: { x: 0, y: -28 }, gravity: -4, spread: 0.3, seed: 17, wobble: 6, grow: 1.6, kind: 'bubble', angleFromVelocity: false, prewarm: 3 });
+    const swallows = flock({ count: 9, bounds: { x: gx + 20, y: 20, w: colW - 40, h: 220 }, seed: 23, speed: 110, neighbor: 90 });
+    const finches = flock({ count: 6, bounds: { x: gx + 40, y: 200, w: colW - 80, h: 160 }, seed: 29, speed: 55, neighbor: 70 });
+    const motes = particles({ emitter: { x: gx + colW / 2, y: 300, w: colW - 60, h: 400 }, rate: 10, life: 6, velocity: { x: 4, y: -6 }, spread: 1.5, seed: 31, wobble: 8, kind: 'mote', angleFromVelocity: false, scaleRange: [0.5, 1.4], prewarm: 6 });
+    const garden = perch({ points: [{ x: gx + 60, y: 500 }, { x: gx + 150, y: 500 }, { x: gx + 240, y: 500 }, { x: gx + 330, y: 500 }, { x: gx + 420, y: 500 }], seed: 8 });
+
+    // Hell: fires, smoke, ash, bats, ravens, beam, flame
+    const hx = colW * 2;
+    const embers = particles({ emitter: { x: hx + 110, y: 470, w: 50, h: 6 }, rate: 28, life: 2.8, velocity: { x: 6, y: -70 }, gravity: -12, spread: 0.6, seed: 41, drag: 0.4, wobble: 14, grow: 0.35, kind: 'ember', scaleRange: [0.6, 1.3], prewarm: 3 });
+    const smokeP = particles({ emitter: { x: hx + 110, y: 440, w: 30, h: 6 }, rate: 4, life: 5, velocity: { x: 8, y: -40 }, gravity: -3, spread: 0.3, seed: 43, drag: 0.3, wobble: 10, grow: 3.2, kind: 'smoke', angleFromVelocity: false, scaleRange: [0.8, 1.2], fade: 0.8, prewarm: 5 });
+    const ashP = particles({ emitter: { x: hx + colW / 2, y: -10, w: colW - 40, h: 4 }, rate: 7, life: 9, velocity: { x: -6, y: 24 }, spread: 0.6, seed: 47, wobble: 18, kind: 'ash', angleFromVelocity: false, spin: 2, scaleRange: [0.5, 1.2], prewarm: 9 });
+    const bats = flock({ count: 14, bounds: { x: hx + 20, y: 30, w: colW - 40, h: 260 }, seed: 53, speed: 85, neighbor: 80 });
+    const ravens = flock({ count: 4, bounds: { x: hx + 60, y: 120, w: colW - 120, h: 240 }, seed: 59, speed: 60, neighbor: 120 });
+    const flames = perch({ points: [{ x: hx + 300, y: 480 }, { x: hx + 340, y: 490 }, { x: hx + 380, y: 470 }, { x: hx + 110, y: 465 }], seed: 61 });
+
+    function drawSandbox(now, dt) {
+      const ctx = sctx;
+      // backgrounds
+      paintBg(ctx, colW, sbH, 'sky');
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 280, colW, sbH - 280); ctx.clip(); paintBg(ctx, colW, sbH, 'meadow'); ctx.restore();
+      ctx.save(); ctx.translate(gx, 0); paintBg(ctx, colW, sbH, 'sky'); ctx.beginPath(); ctx.rect(0, 250, colW, sbH - 250); ctx.clip(); paintBg(ctx, colW, sbH, 'meadow'); ctx.restore();
+      ctx.save(); ctx.translate(hx, 0); paintBg(ctx, colW, sbH, 'night'); ctx.restore();
+      // pond
+      ctx.fillStyle = '#4c7fa6'; ctx.beginPath(); pond.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(40,30,10,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+      // rock with cave
+      ctx.fillStyle = '#c9a66a'; ctx.beginPath(); ctx.moveTo(20, 230); ctx.quadraticCurveTo(40, 60, 110, 70); ctx.quadraticCurveTo(170, 90, 150, 230); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#2a1e12'; ctx.beginPath(); ctx.ellipse(rock.x, rock.y, 14, 22, 0, 0, Math.PI * 2); ctx.fill();
+      // garden water + hell ground
+      ctx.fillStyle = '#4c7fa6'; ctx.fillRect(gx + 40, 430, colW - 80, 110);
+      ctx.fillStyle = '#3a1d10'; ctx.fillRect(hx, 480, colW, sbH - 480);
+
+      // update
+      for (const b of [edenFlock, swans, ducks, butterflies, dragonflies, herons, frogs, fishLeap, splashes, bubbles, swallows, finches, motes, garden, embers, smokeP, ashP, bats, ravens, flames]) b.update(dt);
+
+      // draw Eden
+      for (const it of edenFlock.items) drawItem(ctx, 'blackbird', it, 12, { px: 12 });
+      for (const it of swans.items) drawItem(ctx, 'swan', { ...it, angle: 0, flipX: Math.cos(it.angle) < 0 }, 44, { px: 44, reflection: false });
+      ducks.items.forEach((it, i) => drawItem(ctx, 'duck', { ...it, angle: 0, flipX: Math.cos(it.angle) < 0 }, 26, { px: 26, palette: ['mallard', 'female', 'dark', 'mallard'][i] }));
+      for (const it of herons.items) drawItem(ctx, 'heron', it, 60, { px: 60 });
+      butterflies.items.forEach((it, i) => drawItem(ctx, 'butterfly', it, 16, { px: 16, palette: ['white', 'orange', 'blue', 'yellow', 'white'][i], rest: it.rest > 0 }));
+      dragonflies.items.forEach((it, i) => drawItem(ctx, 'dragonfly', it, 22, { px: 22, palette: ['blue', 'green'][i] }));
+      for (const it of frogs.items) drawItem(ctx, 'frog', it, 22, { px: 22 });
+      // draw Garden
+      for (const it of swallows.items) drawItem(ctx, 'swallow', it, 18, { px: 18 });
+      for (const it of finches.items) drawItem(ctx, 'goldfinch', it, 16, { px: 16, pose: 'fly' });
+      for (const it of motes.items) drawItem(ctx, 'mote', it, 5, { px: 5, palette: 'warm' });
+      for (const it of fishLeap.items) drawItem(ctx, 'fish', it, 46, { px: 46, bend: it.bend, palette: 'silver' });
+      for (const it of splashes.items) drawItem(ctx, 'droplet', it, 7, { px: 7 });
+      for (const it of bubbles.items) drawItem(ctx, 'bubble', it, 8, { px: 8 });
+      garden.items.forEach((it, i) => drawItem(ctx, ['goldfinch', 'kingfisher', 'hoopoe', 'songbird', 'songbird'][i], it, 54, { px: 54, palette: ['', '', '', 'green', 'blue'][i] }));
+      // draw Hell
+      ctx.save(); ctx.translate(hx + 20, 40); ctx.rotate(0.9); ctx.scale(420, 420); drawSprite(ctx, 'lightBeam', now / 1000, { px: 420, width: 0.22 }); ctx.restore();
+      ctx.save(); ctx.translate(hx + colW - 30, 20); ctx.rotate(2.3); ctx.scale(380, 380); drawSprite(ctx, 'lightBeam', now / 1000 + 3, { px: 380, width: 0.18 }); ctx.restore();
+      for (const it of smokeP.items) drawItem(ctx, 'smoke', it, 22, { px: 22, age: it.u, palette: 'warm' });
+      for (const it of ashP.items) drawItem(ctx, 'ash', it, 5, { px: 5 });
+      for (const it of ravens.items) drawItem(ctx, 'raven', it, 34, { px: 34 });
+      for (const it of bats.items) drawItem(ctx, 'bat', it, 20, { px: 20 });
+      for (const it of embers.items) drawItem(ctx, 'ember', it, 6, { px: 6, heat: 1 - it.u });
+      flames.items.forEach((it, i) => drawItem(ctx, 'flame', it, [26, 18, 22, 34][i], { px: 26 }));
+    }
+
+    // ----- perf probe: 300 mixed sprites on an offscreen canvas -----
+    function perfProbe(px) {
+      const off = document.createElement('canvas'); off.width = 800; off.height = 600;
+      const ctx = off.getContext('2d');
+      const names = spriteNames.filter((n) => n !== 'lightBeam');
+      const list = [];
+      for (let i = 0; i < 300; i++) list.push({ name: names[i % names.length], x: 20 + (i * 97) % 760, y: 20 + (i * 61) % 560, a: (i * 0.7) % 6.28 });
+      const samples = [];
+      for (let f = 0; f < 60; f++) {
+        ctx.fillStyle = '#333'; ctx.fillRect(0, 0, 800, 600);
+        const t0 = performance.now();
+        for (const s of list) {
+          ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.a); ctx.scale(px, px);
+          drawSprite(ctx, s.name, f * 0.016 + s.a, { px });
+          ctx.restore();
+        }
+        ctx.getImageData(0, 0, 1, 1); // force the rasteriser to finish before timing
+        samples.push(performance.now() - t0);
+      }
+      samples.sort((a, b) => a - b);
+      return { median: samples[30], p90: samples[54], min: samples[0] };
+    }
+    let paused = false;
+    function runPerf() {
+      paused = true; // measured on an idle main thread, two frames after the loop stops
+      requestAnimationFrame(() => requestAnimationFrame(() => { runPerfNow(); paused = false; }));
+    }
+    function runPerfNow() {
+      const r8 = perfProbe(8), r40 = perfProbe(40);
+      document.getElementById('perf8').textContent = `${r8.median.toFixed(2)} (p90 ${r8.p90.toFixed(2)})`;
+      document.getElementById('perf40').textContent = `${r40.median.toFixed(2)} (p90 ${r40.p90.toFixed(2)})`;
+      window.__perf = { px8: r8, px40: r40 };
+    }
+    document.getElementById('rerun').addEventListener('click', runPerf);
+
+    // ----- loop -----
+    let last = performance.now(), frames = 0, fpsT = last;
+    function loop(now) {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const t = now / 1000;
+      if (paused) { requestAnimationFrame(loop); return; }
+      for (const cell of cells) if (visible.has(cell.ctx.canvas)) drawCell(cell, t);
+      if (visible.has(sb)) drawSandbox(now, dt);
+      frames++;
+      if (now - fpsT > 500) { document.getElementById('fps').textContent = Math.round(frames * 1000 / (now - fpsT)); frames = 0; fpsT = now; }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+    setTimeout(runPerf, 800);
+    window.__life = { sprites, cells };
+  </script>
+</body>
+</html>

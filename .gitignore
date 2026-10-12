@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.DS_Store
+# reference scans and generated data are large and regenerable
+Bosch - The Garden of Earthly Delights/
+tiles/
+work/
+public/data/strokes/
+public/data/exterior/
+# Klim Type Foundry fonts: licensed, not for redistribution
+fonts/
+.cloudflare/

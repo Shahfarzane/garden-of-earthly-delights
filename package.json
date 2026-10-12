@@ -1,0 +1,27 @@
+{
+  "name": "garden-of-earthly-delights",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Bosch's Garden of Earthly Delights, repainted with 57.9 million JavaScript brush strokes",
+  "license": "MIT",
+  "homepage": "https://mirage.nerd.ceo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shahfarzane/garden-of-earthly-delights.git"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "prepare-sources": "node tools/prepare.js",
+    "paint": "node tools/paint.js",
+    "deploy": "cf deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/build-output-utils": "^0.9.0",
+    "@cloudflare/config": "^0.24.1",
+    "sharp": "^0.35.5",
+    "vite": "^8.3.4"
+  }
+}

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Mirage: The Garden of Earthly Delights</title>
+  <meta name="description" content="Bosch's triptych, painted live in your browser, stroke by stroke. Zoom from the whole painting down to a single brushstroke and watch its figures come alive." />
+  <meta name="theme-color" content="#000000" />
+  <meta name="color-scheme" content="dark" />
+  <link rel="canonical" href="https://mirage.nerd.ceo/" />
+
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Mirage" />
+  <meta property="og:title" content="Mirage: The Garden of Earthly Delights" />
+  <meta property="og:description" content="Bosch's triptych, painted live in your browser, stroke by stroke." />
+  <meta property="og:url" content="https://mirage.nerd.ceo/" />
+  <meta property="og:image" content="https://mirage.nerd.ceo/og.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Hieronymus Bosch's Garden of Earthly Delights triptych, repainted from brushstrokes, on a black background." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Mirage: The Garden of Earthly Delights" />
+  <meta name="twitter:description" content="Bosch's triptych, painted live in your browser, stroke by stroke." />
+  <meta name="twitter:image" content="https://mirage.nerd.ceo/og.jpg" />
+
+  <link rel="preload" href="/data/scene.json" as="fetch" crossorigin />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <canvas id="paint" aria-label="The Garden of Earthly Delights, painted live"></canvas>
+  <canvas id="life" aria-hidden="true"></canvas>
+  <div id="ui"></div>
+  <noscript><p class="fallback">Mirage paints Bosch's Garden of Earthly Delights live in your browser, so it needs JavaScript.</p></noscript>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

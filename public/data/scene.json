@@ -1,0 +1,1336 @@
+{
+ "world": {
+  "w": 156547,
+  "h": 89116
+ },
+ "panels": [
+  {
+   "id": "eden",
+   "name": "The Garden of Eden",
+   "x0": 992,
+   "x1": 36640,
+   "y0": 992,
+   "y1": 88128
+  },
+  {
+   "id": "garden",
+   "name": "The Garden of Earthly Delights",
+   "x0": 37600,
+   "x1": 118944,
+   "y0": 992,
+   "y1": 88128
+  },
+  {
+   "id": "hell",
+   "name": "Hell",
+   "x0": 119904,
+   "x1": 155552,
+   "y0": 992,
+   "y1": 88128
+  }
+ ],
+ "pois": [
+  {
+   "id": "ab2aef8d-2011-480c-958d-032b6593bb54",
+   "title": "The Lake Towers",
+   "x": 66420.939645816,
+   "y": 20853.144,
+   "r": 13202.7982672,
+   "panel": "garden",
+   "overview": false,
+   "text": "Four towers stand in the lake behind the cavalcade, and none of them could be built. The pink one on the left is a flaking shell that seems to have grown rather than been raised; the blue mass in the middle sprouts a crown of thistle-leaf spikes; the tall central column balances a flower-like hull on a thin stem; the pink and blue pair on the right is pierced by a cylinder with people crawling along it. The materials read as rock, coral, seed pod and glass at once.\n\nBosch gives this architecture the logic of plants. Towers bud, split and fruit, and each one shelters tiny figures the way a hollow fruit shelters a worm. One reading is that the garden is a world without builders: nothing here was made by work, so nothing here obeys a carpenter's rules.\n\nZoom into the pink tower on the left and find the man climbing through the broken wall, and the small crowd on the sloping ledge below the cylinder."
+  },
+  {
+   "id": "aa743c21-8420-4e15-931e-037164ea5e5d",
+   "title": "Key",
+   "x": 125533.48948470001,
+   "y": 33265.463855796,
+   "r": 2040.0022014321,
+   "panel": "hell",
+   "overview": false,
+   "text": "A giant key floats in the dark beside the horse's skull. Its bow is a ring, and a man hangs from that ring by his waist, head and arms lost inside the iron, legs dangling in the air. A blue, monkey-like devil beside him braces a long spear, and a small black bird crosses the sky behind.\n\nKeys open and lock, so a man swallowed by one is a tidy image of being shut out for good. One reading pairs the key with the horse's skull and the bell hanging below as a set of hollow, dead things that once had a use. Nothing in this corner of hell does what it was made for.\n\nLook at the key's bit, the toothed end at the bottom. It is cut as a neat, functional pattern, and the shaft is hollow, as late medieval keys often were."
+  },
+  {
+   "id": "315f9927-5bfe-4455-951e-06e1f235fb06",
+   "title": "The Sealed Document",
+   "x": 150187.6068737,
+   "y": 82984.8192,
+   "r": 1565.47,
+   "panel": "hell",
+   "overview": false,
+   "text": "Below the pig in a nun's veil, a sheet of paper lies across the man's lap, pinned with two red wax seals. A second sheet with scratched lines hangs from the pig's side. Behind the man, a quill and an ink pot hang from the crest of an armoured, bird-legged creature, waiting for him to sign.\n\nThe props are those of a legal act: document, seals, ink. What he is about to sign is not written out, which is the point. The scene is often read as a man being coaxed into a contract he will regret, with the sealed sheet standing for any bargain made in bad faith, whether a will, a mortgage or a purchased pardon.\n\nZoom into the seals. They are painted as soft, lumpy wax with a visible impression, and the man's hand hovers a finger's width above the page."
+  },
+  {
+   "id": "77e11863-d00a-4bf2-90ce-0db5ce44e6cc",
+   "title": "Pact with the devil",
+   "x": 146269.7677235,
+   "y": 79313.24,
+   "r": 6617.6179976786,
+   "panel": "hell",
+   "overview": false,
+   "text": "In the lower right corner of hell, a pig wearing a nun's veil wraps a foreleg around a seated, naked man and nuzzles his cheek. He leans away with a sour look, one hand pushing at the pig's snout. A document with wax seals lies across his thighs. Beside them an armoured creature with a severed foot hanging from a hook on its helmet carries a quill and an ink pot.\n\nThe pig in a habit is Bosch's bluntest joke about the clergy, and the kiss is a seduction. A common reading is that the man is being talked into signing something, and that the pig's affection ends the moment he does. Whether the deal is with a corrupt church or with the devil, the result is the same corner of hell.\n\nThe man's toes press into the ground as if he were bracing to stand. The pig's trotters are painted with the same care as his feet."
+  },
+  {
+   "id": "bc2bbf66-1838-4fd9-a771-113cecd624a8",
+   "title": "The Owl in the Fountain",
+   "x": 19099.81887071,
+   "y": 43488.608,
+   "r": 2287.1516699999997,
+   "panel": "eden",
+   "overview": false,
+   "text": "An owl sits in a round hole at the heart of the pink fountain in Eden, on the centre line of the panel. Its face is turned toward the viewer. Around it the fountain's shell is studded with pearls, and below it a heap of dark mud glints with gems, crystals and metal tubes.\n\nOwls fly by night and see what others cannot, and in Bosch's time they carried a mixed reputation: wisdom, but also sin, heresy and bad luck. An owl at the centre of paradise, on the first day Adam and Eve meet, is often read as a quiet warning that the fall is already waiting. Owls appear in many of Bosch's paintings, so often that the owl is sometimes called his signature bird.\n\nZoom in on the eyes. They are two pale rings with black centres, painted so they appear to look back no matter where you stand."
+  },
+  {
+   "id": "2c76f1a8-affe-486b-a057-11a5454b05b4",
+   "title": "Picking Apples",
+   "x": 109375.33433269999,
+   "y": 48479.10400000001,
+   "r": 4377.847343649,
+   "panel": "garden",
+   "overview": false,
+   "text": "Under a small orchard at the right edge of the centre panel, a group of young men and women gather fruit. One stretches an arm up to a branch, one hands a red apple down, one bites into it. A man on the left offers a strawberry the size of a loaf. Beneath them, a tawny owl sits on the grass while two figures hold up cherries like trophies.\n\nApples in a garden point to the tree of Eden, where a single bite cost everything. In the centre panel nobody bites just once. Fruit is picked, passed, eaten and worn in every corner, and one reading is that the whole panel shows the pleasures of Eden without the one rule that gave them weight.\n\nLook at the apple tree itself. The trunk is dark and the foliage is dabbed with pale dots of blossom and red fruit, so spring and harvest happen at once."
+  },
+  {
+   "id": "f95c418d-2696-4ad8-83d2-1f9b0cfc754f",
+   "title": "The Glass Sphere",
+   "x": 48099.447255039,
+   "y": 61113.608312576,
+   "r": 4696.41,
+   "panel": "garden",
+   "overview": false,
+   "text": "A man and a woman sit inside a bubble of glass that grows out of a giant red fruit at the left of the centre lake. The bubble has a visible crack across it. From the same plant, a leaf like a sea-blue shell spreads over a dandelion head, and in the stalk below, a face peers out of a glass tube while a rat crawls toward it.\n\nGlass is fragile and so is pleasure. A proverb of the period compared happiness to glass, which breaks as soon as it is made, and the crack in the sphere is often read that way. The man's hand on the woman's belly and the rat in the tube add a note of lust and decay.\n\nZoom into the surface of the bubble. Bosch painted it with thin white highlights on the curve and a faint grey edge where the glass meets the fruit."
+  },
+  {
+   "id": "7dc95260-49d6-4c36-af28-39bb88a15887",
+   "title": "The Lantern",
+   "x": 149075.42716573802,
+   "y": 34746.0432288,
+   "r": 3631.8903999999998,
+   "panel": "hell",
+   "overview": false,
+   "text": "To the right of the tree-man, a brown lantern-shaped cage stands open on a ledge. Both doors are flung back and a crowd of helmeted figures fills the dark inside and the ground around it. A naked man with a shield and spear is pushed toward it by a winged devil with a moth-patterned wing, and a ladder leans against a tall jug-like tower on the right.\n\nThe cage is built like a lantern or a reliquary, something that should hold light or a holy object. Instead it holds armed men. One reading is that it mocks the vessels of the church, another that it is simply a prison. The crush of pale helmets inside is one of the darkest passages of the panel.\n\nLook at the dead tree above, white against the black air, and the tiny ladder with a figure at the top beside it."
+  },
+  {
+   "id": "1bc9233f-ac1e-41c7-bbbb-3fa405c35a19",
+   "title": "Exotic Animals",
+   "x": 11881.34277251,
+   "y": 27091.264,
+   "r": 3978.7359332,
+   "panel": "eden",
+   "overview": false,
+   "text": "A grey elephant walks across the Eden meadow with a monkey on its back. Nearby a unicorn drinks from the pool beside two stags, a bear climbs a tree, a fox-like creature trots by and a porcupine bristles on the slope. Behind them, flocks of birds pour out of a cave in a yellow rock.\n\nFew people in the Low Countries had seen an elephant or a giraffe. Bosch worked from travellers' drawings and printed images, which is why the elephant's ears and feet are slightly wrong and the giraffe looks like an elongated horse. The unicorn was a real animal to most readers of the time, listed in bestiaries beside the lion.\n\nThe elephant's trunk curls toward the pool as if it were about to drink. Zoom in on the monkey holding on with both hands."
+  },
+  {
+   "id": "806bc2c4-2006-472b-9eb4-47d98eddebef",
+   "title": "Music from hell",
+   "x": 131023.89710206799,
+   "y": 51947.142256,
+   "r": 5962.198946959999,
+   "panel": "hell",
+   "overview": false,
+   "text": "The lower left of hell is an orchestra. A naked man is strung across a harp like a crucified figure, another is pinned beneath a lute, a third is crushed inside the wheel of a hurdy-gurdy. A shawm, a drum and a long horn are played by devils and sinners together, and a choir of damned souls sings from a page of music below.\n\nMusicians and dancers belonged to the world of taverns, and preachers listed music among the vanities. Bosch turns instruments into instruments of torture: the body becomes the string, the drum, the reed. One reading is that these are the people who sang in the garden, now hearing their own music played on themselves.\n\nZoom into the hurdy-gurdy. A small face looks out of its soundbox, and the crank at the top is turned by a man who stands on the lid with a bowl held out."
+  },
+  {
+   "id": "af3f45cb-067d-4e95-9f0e-5067f63ee77c",
+   "title": "Horse's Skull",
+   "x": 123697.9289456,
+   "y": 36197.787426799994,
+   "r": 1964.7141466502999,
+   "panel": "hell",
+   "overview": false,
+   "text": "A bleached horse's skull lies on the dark ground at the left edge of hell, pierced through the eye socket by a long lance. A blue devil crouches on top and grips the shaft. A bell hangs below the jaw and a man's legs dangle from a key behind.\n\nThe skull is painted with a care that borders on anatomical study: the nasal bone, the rows of teeth, the hollow of the cheek. Bosch rarely paints anything so still. One reading places it among the dead tools of this corner (key, bell, bones) as a reminder that in hell even the animals are long gone.\n\nLook at the blue stain across the brow of the skull. It is the shadow of the devil above, painted as a cold tint on the bone."
+  },
+  {
+   "id": "bf4cfd85-38e5-4563-aa6e-536f323a3e9e",
+   "title": "Courtly Love",
+   "x": 85598.9133539,
+   "y": 71863.1424,
+   "r": 9372.11822472,
+   "panel": "garden",
+   "overview": false,
+   "text": "The bottom of the centre panel is a tangle of pairs. A man kneels and holds out a flower to a woman. Another couple sits inside a hollow pink fruit. A man carries a huge mussel shell with two lovers inside, their legs sticking out of it. One figure holds a giant fish, another balances a cherry on his head, and a flock of pale bodies gathers around a red tent at the top.\n\nThe poses borrow from the language of courtly love, the polite flirtation of poems and tapestries, but the setting strips it of clothes and ceremony. One reading is that Bosch shows courtship without restraint, where every gesture leads straight to the fruit it promises.\n\nZoom into the group on the left, where a man inside a glass-blue fruit touches a woman's hair while a bird perches on the rim above them."
+  },
+  {
+   "id": "4abb59e9-d513-4a46-9f8e-5ee142d8b280",
+   "title": "The Blue Globe",
+   "x": 79243.095447986,
+   "y": 26599.34368,
+   "r": 2191.658,
+   "panel": "garden",
+   "overview": false,
+   "text": "In the middle of the lake, a cracked blue globe rises from the water with a gilded rim around its waist. A man lies on the rim and reaches down toward a swimmer. Another stands on his head. A third bends over with his backside to the viewer. In the dark opening at the base, a man and a woman sit half submerged, the woman's arm thrown out as if she were calling to someone.\n\nThe globe is painted like a shattered world, and the figures on it behave like children on a float. One reading connects it with the sealed globe on the closed shutters, the earth on the third day of creation: there it was still and perfect, here it has been climbed on, cracked and occupied.\n\nLook at the bather near the base, lying on his back with his legs crossed, and at the kissing pair in the water beside him."
+  },
+  {
+   "id": "f126d949-fd56-412e-8528-5ff272b3067c",
+   "title": "The Centre Panel",
+   "x": 78540.8509666,
+   "y": 43132.144,
+   "r": 25361.346483413003,
+   "panel": "garden",
+   "overview": true,
+   "text": "The centre panel is the largest and the strangest of the three. A meadow full of naked men and women runs from the bottom edge to a lake with four towers, and beyond it to blue hills under a pale sky. In the middle, a ring of riders on horses, boars, camels and griffins circles a pool of bathing women. Everywhere people eat giant fruit, climb into hollow seed pods, hide in shells and talk to birds the size of houses.\n\nNobody is old, nobody is clothed, nobody works. There is no cold, no darkness, no church and no king. What the panel means has been argued about for five centuries. The oldest reading is a sermon: this is the world given over to lust, the sin that leads to the hell on the right. A later reading, now mostly rejected, saw it as a heretical sect's vision of innocent love. A third view treats it as an imagined Eden continued, the world as it might have been if the fall had not happened.\n\nWhichever reading you prefer, the panel rewards slow looking. Start at the bottom, where the figures are largest, and move up. Every group tells a small story, and most of them are funnier than they first appear."
+  },
+  {
+   "id": "6e467a7f-bc0a-4808-93fa-681fb0c6e8e3",
+   "title": "The Severed Foot",
+   "x": 145022.127896438,
+   "y": 82343.18400000001,
+   "r": 2287.1516699999997,
+   "panel": "hell",
+   "overview": false,
+   "text": "Near the right edge of hell, a creature made of a helmet and a kettle crouches on clawed feet. A severed human foot hangs from a hook on its antlered crest. An arrow has gone through the creature's own leg, and a long sword with a dragon's tail lies on the ground in front of it. Beside it, a man's hand reaches up into the dark.\n\nThe foot is painted pale and limp, with the skin pulled back at the ankle. Bosch lets it hang like a trophy in a butcher's window. One reading is that the creature wears the remains of its victims, the way a knight might hang a captured banner from his lance. The arrow in its own leg suggests that in hell even the torturers bleed.\n\nZoom into the helmet. The visor has been turned into the creature's face, and the rivets along its edge are painted one by one."
+  },
+  {
+   "id": "c4ae84fb-6165-4b93-8a1b-69f70da752c3",
+   "title": "The Serpent in the Palm",
+   "x": 30933.431715296,
+   "y": 33383.474471172,
+   "r": 3497.30850957,
+   "panel": "eden",
+   "overview": false,
+   "text": "At the right edge of Eden, a palm tree stands on a pink rock beside the water, and a dark serpent winds up its trunk. Below the palm, a lizard with a long tail and a second small reptile crawl over the stone. The tree bears bunches of dates, and on the hillside behind it a bear climbs after fruit while a rabbit sits in the grass.\n\nThis is the only hint of the fall in the Eden panel. Adam and Eve have not yet reached the tree, and the serpent is not yet speaking. Bosch paints it as a dark spiral, small enough to miss, placed at the border with the centre panel so that the eye crosses from innocence into the garden with the snake in view.\n\nLook at the rock beside the palm. A hole opens in it like a mouth, and a tiny owl's face can be found in the shadow above the lizard."
+  },
+  {
+   "id": "260eb0f3-9b69-435e-9968-77a34813b537",
+   "title": "The Severed Hand",
+   "x": 131950.7110728,
+   "y": 77709.152,
+   "r": 2798.6011293755,
+   "panel": "hell",
+   "overview": false,
+   "text": "A beaked creature in a white cloak and a cape of scales presses a man to the ground beneath an overturned table. The creature wears wooden pattens on its feet, the raised clogs people wore over shoes to keep out of the mud. On its back, like a shield, it carries a blue disc with a severed hand nailed to it, a knife through the fingers and a pair of dice balanced on the wrist.\n\nThe hand and dice belong to the gambling scene above. Tavern brawls over cards and dice ended in knife fights, and a hand cut off was the old penalty for a thief or a cheat. One reading is that the shield displays the punishment while the creature carries it out.\n\nZoom into the pattens: two wooden soles on little blocks, with leather straps, painted exactly as they were made."
+  },
+  {
+   "id": "0bb57f9c-3650-4abb-864e-7b8b2a64ea96",
+   "title": "The Giant Strawberry",
+   "x": 64371.249736800004,
+   "y": 24061.320000000003,
+   "r": 1930.683662351,
+   "panel": "garden",
+   "overview": false,
+   "text": "A strawberry as big as a boulder sits on a slope near the lake, and a huddle of pale figures gathers around it as if to eat it or carry it off. Behind them a man swims flat on the grass, a deer grazes, and a great white egg lies open on the bank with figures crawling from the crack.\n\nStrawberries and other red berries fill the centre panel, and nearly all of them are oversized. A century after it was painted, a Spanish writer at the Escorial called the triptych the strawberry painting and read the fruit as a pleasure that tastes of nothing once it is swallowed. Whether Bosch meant that or simply liked the shape is not recorded.\n\nLook at the seeds: each one is a tiny pale stroke with a shadow, laid down in rows that follow the curve of the fruit."
+  },
+  {
+   "id": "3fabe328-009e-4b84-82c7-7cdcb26efad5",
+   "title": "City on fire",
+   "x": 132723.982963197,
+   "y": 11050.384,
+   "r": 4922.75661089,
+   "panel": "hell",
+   "overview": false,
+   "text": "At the top of the hell panel, a city burns. Fires glow in windows and from the broken tower, and smoke lit from below drifts across the black sky. Tiny figures run along the walls and a ladder leans against a gate. On the water in front, a sailing boat crosses toward a crowd of soldiers, and a round mill wheel turns on the left.\n\nBurning towns were a familiar sight in the Low Countries, and 's-Hertogenbosch itself suffered a great fire in 1463, when Bosch was a boy. Whether he remembered it is a guess, but the night sky lit from beneath by flames became one of his trademarks, repeated in several of his paintings.\n\nZoom into the far right of the crop, where a lone figure stands in a lit doorway, and into the mill wheel on the left with a figure beside it."
+  },
+  {
+   "id": "202ea42c-d5e8-49ee-ac39-7d185ad7d60e",
+   "title": "Animals fighting",
+   "x": 26227.284648443,
+   "y": 22983.9877644,
+   "r": 1565.47,
+   "panel": "eden",
+   "overview": false,
+   "text": "On the slope above the fountain in Eden, a lion has caught a deer and bites into its throat. A few steps away a dragon-like creature with a long tail stands upright, and a herd of deer rests on the hill behind. A tree in the foreground is sprayed with pale dots of blossom.\n\nParadise, in this version, already has death in it. Lions eat, and nothing in Bosch's Eden suggests otherwise. One reading is that the fall is foreshadowed everywhere: in the owl, in the dark pool, in this kill. Another is that Bosch simply painted the animals as he knew them from books and prints, lions included.\n\nLook at the deer's legs, stretched out stiff under the lion, and the second deer on the slope above, half hidden in the grass, that seems to watch."
+  },
+  {
+   "id": "73402d32-47da-427b-bab6-80481347509c",
+   "title": "Hostile Armies",
+   "x": 129677.5547046,
+   "y": 18609.334655216,
+   "r": 1910.4203908727,
+   "panel": "hell",
+   "overview": false,
+   "text": "A column of soldiers in dark armour rides across the burning plain at the top of hell. Lances and a black banner rise above them and the light of distant fires catches a helmet here and there. Below them, naked figures struggle in a river of mud, and on the water behind a ship with a brown sail drifts past.\n\nWar in Bosch's time was a matter of hired companies that lived off the land they crossed, and the painter places them in hell without comment. The riders are almost silhouettes, picked out against a sky that glows like embers. One reading is that they are the devil's garrison. Another is that they are the damned themselves, still marching.\n\nZoom into the banner. Its tail curls back over the column, and the tip of a single lance crosses it."
+  },
+  {
+   "id": "2f5c3728-e424-4eee-b2a8-830a51bc3c75",
+   "title": "The Mirror",
+   "x": 143507.1358504,
+   "y": 69688.712,
+   "r": 2996.0800194792,
+   "panel": "hell",
+   "overview": false,
+   "text": "A woman with long fair hair sits on the ground with a toad clamped to her chest, its legs spread across her breast. Behind her, a green-bodied demon bends over with a round mirror fixed to its backside, and her face is reflected in the glass. A black, long-eared beast watches from under a pink hood.\n\nThis is the punishment of vanity. Women were painted with mirrors to stand for pride, and here the mirror is mounted where it insults her most. The toad is a creature of filth in the bestiaries and clings to the place where she admired herself. One reading has the demon's green legs echoing the lizards that crawl from the Eden pool.\n\nZoom into the mirror. Her reflection is painted with the same detail as her face, and a dark twig lies across her belly like a scar."
+  },
+  {
+   "id": "9c8ce387-9638-4371-842e-8deab153dd64",
+   "title": "Ice skating in hell",
+   "x": 144854.84897340002,
+   "y": 48621.6896,
+   "r": 4831.270090103701,
+   "panel": "hell",
+   "overview": false,
+   "text": "The lake at the centre of hell has frozen over. A naked man skates across it on a single blade, pushing a hull-shaped sled. Behind him a second figure skates away with arms out for balance. A bird-headed creature in a cloak and skates glides past with a stick, and in the water below the ice a man clings to a sinking boat.\n\nHell is usually fire, but a frozen hell has deep roots: Dante's lowest circle is ice, and a Dutch winter supplied the image. Skating was a pastime of the Low Countries, and here it has become the mock-pastime of the damned, who never reach a bank.\n\nLook at the sled under the skater's hands. It is built like a tiny boat with an awning frame, exactly the kind of ice yacht used on frozen canals."
+  },
+  {
+   "id": "02882936-9ae8-4afd-b269-9059d93bec00",
+   "title": "The Bird on the Throne",
+   "x": 141813.9078437,
+   "y": 60955.344000000005,
+   "r": 6695.6193094097,
+   "panel": "hell",
+   "overview": false,
+   "text": "A blue bird-headed monster sits on a high chair at the right of hell, a cauldron on its head like a crown. It swallows a sinner whole, legs first, while a flock of black birds flies out of the victim's backside. Below the chair, the creature voids the eaten into a round pit, where other souls float. One man beside the pit vomits into it, and another drops coins from his backside. \n\nThis is the prince of hell, and his throne is a commode. Bosch builds the whole corner on digestion: sins go in at the mouth and out the other end. The miser pays with coins, the glutton with his body. One reading of the blue pot on the bird's head is a cooking pot, which turns the throne into a kitchen.\n\nZoom into the bubble behind the throne. Two tiny figures float inside it, one with a hand on the other's shoulder."
+  },
+  {
+   "id": "ff6551ec-78a8-4687-8b85-929f46ca4ef4",
+   "title": "The Griffin",
+   "x": 45834.914904522004,
+   "y": 8198.672,
+   "r": 2504.752,
+   "panel": "garden",
+   "overview": false,
+   "text": "High in the sky above the lake towers, a griffin flies with a naked rider on its back. The creature has a bird's head and wings and a lion's body with a long yellow tail. The rider holds up a branch with a red bird perched on it, and the griffin carries a black bear in its talons. Beside it, a thorny loop rises from the pink tower with figures balancing on top.\n\nGriffins came from bestiaries, where they guarded gold in distant mountains. In the garden, they are mounts. Birds, fish and hybrids all carry people here, and the sky is as crowded as the meadow. One reading is that in this world nature serves pleasure in every direction, including upward.\n\nLook at the way the bear hangs, feet up, as if it had been caught mid-sleep."
+  },
+  {
+   "id": "506f24ac-bdc2-4329-b9ae-944fa51ed810",
+   "title": "The End",
+   "x": 74797.93743420001,
+   "y": 42953.912,
+   "r": 28491.554,
+   "panel": "garden",
+   "overview": true,
+   "text": "With the shutters closed, the triptych shows a grey globe floating in darkness: the world on the third day of creation, with land, water and plants but no animals and no people. A small figure of God sits in the upper corner with a book, and a line from Psalm 33 runs across the top of the two panels. Open them, and colour floods in.\n\nThat sequence is the painting's argument. Creation, then Eden, then the garden, then hell, read from the outside in and from left to right. The three panels share one horizon and one light until the dark panel breaks both. The oak boards of the panels have been dated by tree-ring analysis, and together with the style this places the work around 1490 to 1510. It belonged to the Nassau family in Brussels by 1517, passed into Spanish royal hands later in the century and has been in the Prado since 1939.\n\nThe painting has outlived every explanation offered for it. Preachers saw a warning, a 20th-century scholar saw a heretical sect, and surrealists saw a dream. The figures keep eating their fruit regardless. If you have followed the markers this far, go back to the bottom of the centre panel and find the one man who wears clothes. He is looking at you."
+  },
+  {
+   "id": "e0fa864f-6a49-47be-b75c-94ab860bbba6",
+   "title": "The Cracked Egg",
+   "x": 69878.678396384,
+   "y": 23797.53664,
+   "r": 1565.47,
+   "panel": "garden",
+   "overview": false,
+   "text": "A huge white egg lies on the grass beside the lake. Its shell is broken at one end, and a crowd of ruddy figures pours out of the crack into the water, some already up to their waists. Nearby a deer grazes, a man lies stretched out on the lawn as if swimming, and three figures sit together under the trees.\n\nEggs are birth, and the garden is full of them: closed, cracked and hollow. In the 1940s the German scholar Wilhelm Fraenger argued that the whole triptych was painted for a secret sect, the Adamites, who believed in a sinless, naked love, and that scenes like this showed their rites. His theory was widely read and is now rejected by most historians; there is no evidence that such a sect commissioned the work. The egg remains, and it still looks like a beginning.\n\nLook at the crack in the shell. It is painted as a dark jagged line with a thin highlight along each edge."
+  },
+  {
+   "id": "408db248-2c60-426a-ae83-97be837ab918",
+   "title": "Reptiles leaving the water",
+   "x": 29170.040282478,
+   "y": 47231.48,
+   "r": 3891.2574695999997,
+   "panel": "eden",
+   "overview": false,
+   "text": "At the foot of the fountain, the Eden pool turns dark, and things crawl out of it onto the bank. A three-headed bird, a lizard with wings, a creature in a white spotted shell with a duck's bill, newts and beetles all scramble toward the grass. A beaked rock on the right has a lizard on its crest and a tunnel through its base.\n\nMedieval readers believed that some creatures were born from mud by spontaneous generation, and Bosch paints that belief: the pool produces its own animals, and they are not the ones God named. One reading is that this is the first corruption of paradise, happening quietly while Adam and Eve meet a few steps away.\n\nZoom into the shelled creature. It wears its armour like a cloak, with a bird's head poking out and the body of a dog."
+  },
+  {
+   "id": "4a030018-8eb8-4cd4-8605-99af9a5e7dc5",
+   "title": "The Swan",
+   "x": 27341.180581166,
+   "y": 42199.056526087996,
+   "r": 1565.47,
+   "panel": "eden",
+   "overview": false,
+   "text": "A white swan glides across the Eden pool behind the fountain, next to a dark peacock-like bird on a thistle leaf. It is alone on the water, which is otherwise given to ducks and crawling things.\n\nBosch belonged to the Brotherhood of Our Lady in 's-Hertogenbosch, a religious confraternity whose records are the main source for his life. Its most senior members were called swan brothers because they paid for an annual feast at which a swan was served. Bosch is listed among them. Whether this swan is a wink at his brothers is a guess, but it is a pleasant one, and the bird sits in the only calm stretch of water in the whole triptych.\n\nLook at the swan's reflection, broken into a few short white strokes on the blue."
+  },
+  {
+   "id": "e3ef432b-8bc6-4684-b6be-9acace5b88c8",
+   "title": "Mermaids and Marine Knights",
+   "x": 67401.228349731,
+   "y": 27982.424,
+   "r": 2865.9581843886,
+   "panel": "garden",
+   "overview": false,
+   "text": "In the lake near the strawberry, a mermaid with long yellow hair swims beside a merman in grey armour. Both have the tails of fish and the postures of courtiers: she raises a hand as if in conversation, he gestures back. A second armoured swimmer glides past at the left, and above them a fish with legs and a red fruit walks the shore.\n\nKnights and mermaids were the stock of romances, and here they meet in the water on equal terms. One reading is that Bosch makes fun of chivalry by giving the knight a tail. Another is simpler: in the garden every creature has crossed into another, and a knight who is half fish is no stranger than a bird that is half house.\n\nZoom in on the merman's armour. It has a helmet, a gorget and plates on the arms, each catching a line of light."
+  },
+  {
+   "id": "dc6e191d-0163-4d96-bb81-a268c36c7e72",
+   "title": "The Mussel Shell",
+   "x": 64014.782511886006,
+   "y": 63985.288,
+   "r": 4070.2219999999998,
+   "panel": "garden",
+   "overview": false,
+   "text": "A man walks up the bank carrying a giant mussel shell on his back. Inside it, a couple lies hidden, and only their legs and a hand poke out between the two halves of the shell. Pearls spill from the opening. A great tit, several times larger than life, stands on the grass beside them, and a group of pale heads rises from the water behind.\n\nShells were love tokens and pilgrim badges, and pearls were the sign of a pure soul. Bosch puts the lovers inside the shell like the pearl and hands the shell to a porter, which turns the whole thing into a joke about who carries the weight of other people's pleasures.\n\nLook at the shell's edge, a dark, ridged rim with the two valves slightly apart, and at the bare feet of the carrier bending under the load."
+  },
+  {
+   "id": "a99ba3d3-9fc0-4d4e-889b-ab3f2b4929c1",
+   "title": "The Far Horizon",
+   "x": 96049.263756538,
+   "y": 15993.356575984,
+   "r": 2227.616689353,
+   "panel": "garden",
+   "overview": false,
+   "text": "Above the lake towers, the centre panel opens onto a stretch of distant country: rounded green woods, pale meadows with grazing animals and a line of blue hills under a sky that fades to white. A pink hut with a round window holds a couple in the foreground, and a blue thistle-like tower stands beside it.\n\nThe distance is painted with the aerial perspective of Netherlandish landscape, greens turning blue as they recede, and it looks almost real. That is the trick. The horizon is the same across all three panels, so Eden, the garden and hell share one world, and the unbelievable figures stand in believable light. One reading is that Bosch wanted his garden to look like a place you could walk to.\n\nZoom into the meadow. A dark bull, a white horse and a few tiny walking figures are each a single stroke."
+  },
+  {
+   "id": "86a7ea6c-66e7-4375-9ac2-ac784e7fcaaf",
+   "title": "The Mountain Landscape",
+   "x": 19188.9363814,
+   "y": 12476.240000000002,
+   "r": 8453.538,
+   "panel": "eden",
+   "overview": false,
+   "text": "The upper half of Eden is a horizon of rocks that no geologist would recognise. A yellow spire on the left splits into blades and arches, and a swarm of black birds pours through a hole in it. Blue crags in the middle rise like fins, hung with pale trees and thin spines. Flocks of white birds circle the peaks.\n\nBosch had probably never seen mountains, and he invents them from the materials he knew: the ribs of a Gothic church, flint, bone and coral. One reading is that the rocks are alive, growing like plants and nesting birds like trees. The same forms return in the centre panel as towers and in hell as ruins.\n\nLook at the swarm of birds around the yellow rock. Each is a single flick of dark paint, and together they describe the shape of a cloud."
+  },
+  {
+   "id": "82930b91-52c3-417a-ae47-c4c67b6219e3",
+   "title": "Black Figures",
+   "x": 46104.065535434,
+   "y": 73873.854409992,
+   "r": 3383.9646774779003,
+   "panel": "garden",
+   "overview": false,
+   "text": "At the lower left of the centre panel, a dark-skinned woman stands among pale figures with a cherry balanced on her head and an apple in her hand. Behind her a man raises an arm toward a bird, and a figure with a cluster of blue berries for a head leans over the group. A kneeling couple on the right is covered by a thin pink veil.\n\nSeveral of the people in the garden are Black, and Bosch paints them as members of the same company rather than as strangers. In the 15th century, Black figures appeared in Netherlandish art mainly as the Magus Balthasar, and seeing them here at leisure is unusual. One reading is that the garden gathers all of humanity before the flood; another, that the painter simply liked the contrast against the chalky bodies around them.\n\nZoom into the woman's hair, which is painted in tight dark curls, and into the apple she holds against her hip."
+  },
+  {
+   "id": "ae48cbb1-e37f-4db2-b9a6-c669bc967d8e",
+   "title": "Gambling",
+   "x": 126960.15661750901,
+   "y": 71007.62879999999,
+   "r": 3790.2951119396,
+   "panel": "hell",
+   "overview": false,
+   "text": "An overturned backgammon board lies in the foreground of the gaming scene, with dice scattered across it. A woman with a die on her head sits beside a hare-headed demon that leads her by a rope, and a hand in the crowd below is pinned to a table by a knife. On the ground, a severed hand with dice is nailed to a blue disc, and a page of music burns in the corner.\n\nDice, cards and boards were the standard furniture of the tavern, and preachers ranked gambling with drink and lust. Bosch punishes it with its own tools. The woman with the die is often read as the gambler's companion, now led like an animal. A broken jug and a knife on the table say how the game ended.\n\nZoom into the backgammon board. Its points are painted in alternating red and black, exactly as they were on real boards."
+  },
+  {
+   "id": "5c2fac0c-8acf-4f00-acc0-d3f69e156a16",
+   "title": "Jheronimus Bosch",
+   "x": 77827.91557749,
+   "y": 41171.592000000004,
+   "r": 31907.159064800002,
+   "panel": "garden",
+   "overview": true,
+   "text": "Jheronimus van Aken was born around 1450 in 's-Hertogenbosch, a prosperous trading town in the Duchy of Brabant, now in the southern Netherlands. His grandfather, father and brothers were painters, and the family workshop stood on the town's market square. He took his working name from the town, and signed a few of his panels with it. He married a woman from a wealthy family, joined the Brotherhood of Our Lady, a religious confraternity attached to the town's great church, and died in 1516. That is nearly all the records say.\n\nNo drawing, letter or contract explains what he thought his paintings meant. What survives is a small group of panels, perhaps two dozen, that no one else could have made: hells crowded with hybrid devils, saints tempted by things with legs, and this garden. His name was known in Spain and Italy within a few years of his death, and copies of his work were in demand for a century afterwards.\n\nThe painting you are looking at is his largest surviving work. It was probably commissioned by a nobleman rather than a church, and it hung in a palace in Brussels when a visitor first described it in 1517."
+  },
+  {
+   "id": "16b6d12e-b7cd-422d-b8e6-d5334b2b979e",
+   "title": "The Dragon Tree",
+   "x": 9207.8335604963,
+   "y": 56143.08,
+   "r": 4085.1673229242,
+   "panel": "eden",
+   "overview": false,
+   "text": "At the left edge of Eden, a tree with a thick, forking trunk carries crowns of stiff grey-green leaves. A vine with grapes winds around the trunk, and birds perch in the branches. Behind it stands a dark wood of ordinary trees with red fruit.\n\nThis is a dragon tree, a species of the Canary Islands and the coast of Morocco that was described by travellers and prized for its red resin, called dragon's blood. Bosch almost certainly never saw one. The engraver Martin Schongauer had put one into a print of the Flight into Egypt a generation earlier, and Bosch's tree follows that model. Its presence in paradise is often read as a nod to the far south, where medieval maps placed Eden.\n\nLook at the trunk. It is painted like cracked grey skin, with each fork of the branches marked by a ring."
+  },
+  {
+   "id": "a9c28815-5f33-4432-be49-d747a565da20",
+   "title": "The Cave",
+   "x": 113580.743746926,
+   "y": 78161.7899872,
+   "r": 3577.602718246,
+   "panel": "garden",
+   "overview": false,
+   "text": "At the lower right of the centre panel, a woman sits in a transparent pod with a glass tube beside her, resting her chin on her hand. Behind her, in a low cave, stands the only clothed figure in the panel: a man in a dark, hairy garment who looks straight out of the painting and points at the woman. Beside them, a second woman stands under a glass cylinder with two birds on its rim.\n\nThe man's dress is often described as animal skin, the costume of the wild man of folk tales, who lived in the woods outside the rules of town. He is also, by some accounts, a portrait of the painter. Neither can be proved. What is certain is that he looks at the viewer, and nobody else in the garden does.\n\nZoom into the glass tube. A plant grows up inside it, and the woman's fingers rest on its rim."
+  },
+  {
+   "id": "5db0ef8a-fe77-4ff8-b2c9-d9be11c14e92",
+   "title": "The Fountain",
+   "x": 19723.638314599997,
+   "y": 42240.984,
+   "r": 7408.5558882769,
+   "panel": "eden",
+   "overview": false,
+   "text": "A pink fountain stands in the middle of the Eden pool, tall and thin, built of spires and petals and crescent arms that drip water from their tips. Its base is a sphere with a round hole, and an owl sits inside. The whole structure rests on a mound of dark mud scattered with gems and crystals. A giraffe, an elephant and a unicorn graze on the hills behind.\n\nThe fountain of life is a fixture of medieval paradise, and Bosch makes his as a living thing, halfway between a plant and a Gothic finial. Its colour is the colour of flesh. One reading is that the fountain is the source of the four rivers of Eden; the pool below does run off toward the panel's edge.\n\nLook at the drops. Each stream from the crescent arms falls as a fine white line that ends in a small pearl of water."
+  },
+  {
+   "id": "29d8fbce-1bc8-4d04-b9e4-daf28398a722",
+   "title": "The Cavalcade",
+   "x": 79075.5528998,
+   "y": 39745.736,
+   "r": 10332.102,
+   "panel": "garden",
+   "overview": false,
+   "text": "In the middle of the centre panel, a ring of riders circles a round pool. The mounts are horses, boars, camels, bulls, griffins, a panther and at least one deer. The riders are naked men, some carrying fish or fruit, some standing on their mounts, some riding in pairs. In the pool stand women with birds on their heads, watching the procession go by.\n\nCircling is courting. An early reading sees the men parading for the women in the pool, like animals in rut, and the pool as a bath of Venus.\n\nZoom into the far side of the ring, where a rider stands upright on his horse and another leans back to lift a giant fish over his head."
+  },
+  {
+   "id": "9a01650b-cf80-484f-8cac-e5d14562507d",
+   "title": "Buttock song",
+   "x": 126134.7238929,
+   "y": 64826.632156,
+   "r": 2642.51336,
+   "panel": "hell",
+   "overview": false,
+   "text": "Beneath a giant lute at the bottom left of hell, a man lies face down with a page of musical notes painted across his buttocks. A demon with a frog's head reads them off and seems to lead the singers beside him. An open choir book lies on the ground, and a lizard-headed creature holds a page in the crowd.\n\nThe music is painted with real staves and real notes, which has tempted people to play it. In 2014 a student transcribed the notes and the recording went viral under a title about the music of hell's backside. Whether Bosch intended a playable tune is doubtful: the notes follow no clear system, and they may be decoration rather than a score. Still, it is the strangest score in the painting.\n\nZoom into the notes. They are tiny dark squares and diamonds, the shapes of late medieval notation."
+  },
+  {
+   "id": "7cad4aca-267f-419e-8e00-e6ab79b199b6",
+   "title": "Adam and Eve",
+   "x": 20169.223832939,
+   "y": 63807.056,
+   "r": 8385.7426133869,
+   "panel": "eden",
+   "overview": false,
+   "text": "On the Eden meadow, a figure in a pink robe takes Eve by the wrist and presents her to Adam, who sits on the grass and looks up at her. Eve's eyes are lowered. The figure in the middle has the face of Christ and raises his right hand in blessing. Around them, a rabbit, a cat with a mouse in its mouth and a flock of strange birds share the grass.\n\nThis is the creation of Eve, told without the usual sleep and rib. The moment chosen is the first meeting. Adam's feet touch the hem of the divine robe, and his gaze has been read as the first look of desire in the painting, the seed of everything in the centre panel.\n\nLook at Eve's hair. It falls past her hips in long pale strands, and the same hair appears on dozens of women in the next panel."
+  },
+  {
+   "id": "9ba0cd3f-ae01-4a1b-b0e3-f1134a807c2d",
+   "title": "Birds",
+   "x": 49842.119379313,
+   "y": 50369.575177599996,
+   "r": 6122.28234369,
+   "panel": "garden",
+   "overview": false,
+   "text": "At the left of the centre lake, birds the size of houses stand among the people. A kingfisher with a blue back carries two men on its shoulders. A goldfinch with a red face hands a berry to a man. A duck, a hoopoe, a robin and a green woodpecker are mounted or climbed on like furniture, and a tawny owl holds a man in its wings at the water's edge.\n\nBosch painted these birds from life, and every one can be named. Their scale is the joke: the people are the size of insects to them, and they treat them with the patience of pets. One reading is that the natural world here has grown large enough to carry human desire. Another is that the birds are simply wonderful to paint.\n\nZoom into the goldfinch. Its red mask, white cheek and black cap are as exact as a field guide."
+  },
+  {
+   "id": "451dc6a5-5280-43c7-ac1c-f3a1e42cb98a",
+   "title": "Tree man",
+   "x": 136645.1329259,
+   "y": 34577.008,
+   "r": 5645.1677899100005,
+   "panel": "hell",
+   "overview": false,
+   "text": "In the centre of hell stands a creature made of a man, a tree and a broken egg. Two legs like hollow trunks rest in rowing boats on the frozen lake. The body is an eggshell, split open to show a tavern inside, where figures drink at a table. On top, a pale face turns toward the viewer under a flat disc that serves as a hat. On the disc, a bagpipe and a parade of tiny devils and sinners circle a ladder.\n\nThis is the most famous figure in the painting, and the face is often said to be the painter's own, though no portrait of Bosch survives to check against. The body shelters sin, the legs are dead wood, the hat carries music. One reading is that the tree man is a self-mocking emblem of the artist, who builds a hell and then lives in it.\n\nZoom into the shell. A ladder leans against it on the left, and a small figure sits on the rim looking out."
+  },
+  {
+   "id": "f942643d-8644-4822-bc91-f7a854506e18",
+   "title": "The Giraffe",
+   "x": 28011.5182792,
+   "y": 28160.656,
+   "r": 3410.1364710678,
+   "panel": "eden",
+   "overview": false,
+   "text": "A pale giraffe stands on the Eden slope, spotted grey, with two small horns and a slender tail. A brown dog-like animal with long ears walks at its feet, a bear climbs a tree on the left, and a porcupine with a crown of spines sits on the hill above. A palm with bunches of dates grows behind.\n\nBosch had not seen a giraffe. The pose and spots match a drawing made by the Italian traveller Cyriacus of Ancona in Egypt in the fifteenth century, which circulated in copies, and Bosch's version is often linked to it. The animal's calm and its strange proportions make it one of the most memorable creatures in the panel.\n\nLook at the hooves. They are painted as two neat grey toes each, and the giraffe's left front leg is raised as if it were about to step."
+  },
+  {
+   "id": "d7411310-3cf3-454b-87f3-fb5486f1e8c8",
+   "title": "Ear and Knife",
+   "x": 129961.35876090001,
+   "y": 25843.64,
+   "r": 4070.2219999999998,
+   "panel": "hell",
+   "overview": false,
+   "text": "A pair of giant ears, pierced by an arrow, sits like a war machine in the upper left of hell, with the blade of a knife jutting out between them. A small dark demon clings to the inner ear with a spear, and naked figures lie crushed underneath. A burning building and a ladder stand behind. The knife bears a small mark on its blade, a letter close to an M.\n\nThe ears hear nothing and the knife cuts anything. One reading sees a war machine, a siege engine built from senses. Another reads the ears as deafness to the word of God, the arrow as the sin that enters through hearing. The mark on the blade has been linked to the stamps of knife makers in 's-Hertogenbosch, a town known for its cutlery, so the knife may be a local product.\n\nZoom into the ear's curve. Bosch painted the folds of the cartilage with the care of a portrait."
+  }
+ ],
+ "poas": [
+  {
+   "i": 0,
+   "x": 121899.7674848,
+   "y": 77786.786383676,
+   "r": 6751.969951874999,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 1,
+   "x": 24892.423094861002,
+   "y": 80917.32800000001,
+   "r": 8453.538,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 2,
+   "x": 148324.5566814,
+   "y": 57202.2860412,
+   "r": 12650.25936882,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 3,
+   "x": 70427.5522164,
+   "y": 18943.855266072,
+   "r": 3222.4206502737998,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 4,
+   "x": 10197.863714580299,
+   "y": 42478.649866532,
+   "r": 10392.27710133,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 5,
+   "x": 7425.493851,
+   "y": 84125.504,
+   "r": 12210.666,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 6,
+   "x": 134684.57900012,
+   "y": 68792.9447028,
+   "r": 8203.822052950001,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 7,
+   "x": 68822.165392699,
+   "y": 21857.130648540002,
+   "r": 7084.7697594863,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 8,
+   "x": 85266.023046468,
+   "y": 31318.55631744,
+   "r": 11312.023601199999,
+   "volume": 0.5,
+   "panel": "garden"
+  },
+  {
+   "i": 9,
+   "x": 149086.008334015,
+   "y": 25908.665449952,
+   "r": 6440.440639140001,
+   "volume": 0.2,
+   "panel": "hell"
+  },
+  {
+   "i": 10,
+   "x": 105340.76888634301,
+   "y": 35407.861509596,
+   "r": 5748.4816870215,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 11,
+   "x": 151699.51744859002,
+   "y": 68134.5824296,
+   "r": 6508.9972668499995,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 12,
+   "x": 34098.067361217,
+   "y": 37334.4085372,
+   "r": 6147.4389456396,
+   "volume": 0.8,
+   "panel": "eden"
+  },
+  {
+   "i": 13,
+   "x": 20169.223832939,
+   "y": 62915.89599999999,
+   "r": 15654.7,
+   "volume": 0.3,
+   "panel": "eden"
+  },
+  {
+   "i": 14,
+   "x": 20703.925609592003,
+   "y": 64698.216,
+   "r": 12624.7227020638,
+   "volume": 0.3,
+   "panel": "eden"
+  },
+  {
+   "i": 15,
+   "x": 69916.142128595,
+   "y": 46982.07595218,
+   "r": 10542.05500905,
+   "volume": 0.5,
+   "panel": "garden"
+  },
+  {
+   "i": 16,
+   "x": 125727.9365134,
+   "y": 32750.518367528,
+   "r": 3757.5869958040003,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 17,
+   "x": 51392.182493214,
+   "y": 84026.941704,
+   "r": 5944.7940515,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 18,
+   "x": 130598.416132204,
+   "y": 74628.996213612,
+   "r": 15815.27965072,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 19,
+   "x": 60803.851378202,
+   "y": 57894.6282452,
+   "r": 10602.2276525921,
+   "volume": 0.5,
+   "panel": "garden"
+  },
+  {
+   "i": 20,
+   "x": 34160.590510999995,
+   "y": 81808.488,
+   "r": 5640.4301141208,
+   "volume": 0.5,
+   "panel": "eden"
+  },
+  {
+   "i": 21,
+   "x": 43963.45719904001,
+   "y": 27982.424,
+   "r": 7201.162,
+   "volume": 0.1,
+   "panel": "garden"
+  },
+  {
+   "i": 22,
+   "x": 116950.26794990001,
+   "y": 34933.472,
+   "r": 4874.6440351339,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 23,
+   "x": 48241.076734862,
+   "y": 44023.304,
+   "r": 13188.5837996,
+   "volume": 0.1,
+   "panel": "garden"
+  },
+  {
+   "i": 24,
+   "x": 40220.546641033005,
+   "y": 57747.168000000005,
+   "r": 9238.276801599999,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 25,
+   "x": 19252.282811856,
+   "y": 43398.3958732,
+   "r": 12839.7259486432,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 26,
+   "x": 3504.3464713225,
+   "y": 55608.384,
+   "r": 15616.0642004,
+   "volume": 0.1,
+   "panel": "eden"
+  },
+  {
+   "i": 27,
+   "x": 18915.444389084,
+   "y": 28604.797400411997,
+   "r": 7533.3897222545,
+   "volume": 0.3,
+   "panel": "eden"
+  },
+  {
+   "i": 28,
+   "x": 60717.451679979,
+   "y": 19783.752,
+   "r": 8944.8658316228,
+   "volume": 0.1,
+   "panel": "garden"
+  },
+  {
+   "i": 29,
+   "x": 29812.6071689,
+   "y": 23471.7463672,
+   "r": 4668.0972383287,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 30,
+   "x": 73416.014721478,
+   "y": 74324.2857068,
+   "r": 5818.08647517,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 31,
+   "x": 129515.7633801,
+   "y": 11763.312,
+   "r": 17258.805799600003,
+   "volume": 0.1,
+   "panel": "hell"
+  },
+  {
+   "i": 32,
+   "x": 11346.64083931,
+   "y": 13189.168,
+   "r": 14715.418,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 33,
+   "x": 147606.515042244,
+   "y": 48835.56800000001,
+   "r": 8569.069686,
+   "volume": 0.5,
+   "panel": "hell"
+  },
+  {
+   "i": 34,
+   "x": 97077.18986910001,
+   "y": 19070.824,
+   "r": 9859.72768938,
+   "volume": 0.1,
+   "panel": "garden"
+  },
+  {
+   "i": 35,
+   "x": 148070.87806013902,
+   "y": 37515.443413632005,
+   "r": 12117.9588666,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 36,
+   "x": 132467.951597073,
+   "y": 76526.8589396,
+   "r": 6480.3956289995995,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 37,
+   "x": 142170.3810174,
+   "y": 76639.76,
+   "r": 26612.99,
+   "volume": 0.7,
+   "panel": "hell"
+  },
+  {
+   "i": 38,
+   "x": 31450.227489541998,
+   "y": 53345.3188264,
+   "r": 9788.19666867,
+   "volume": 0.1,
+   "panel": "eden"
+  },
+  {
+   "i": 39,
+   "x": 151854.242867698,
+   "y": 16298.762365828,
+   "r": 4383.316,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 40,
+   "x": 5643.154172813101,
+   "y": 57747.168000000005,
+   "r": 18074.831614979,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 41,
+   "x": 113474.7053841,
+   "y": 37606.952,
+   "r": 6574.974,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 42,
+   "x": 90303.22897740001,
+   "y": 23660.729054092,
+   "r": 4344.9076945004,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 43,
+   "x": 6257.0044532679,
+   "y": 34000.128852284,
+   "r": 9705.914,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 44,
+   "x": 86810.8376091,
+   "y": 23651.012112800003,
+   "r": 5073.19514695,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 45,
+   "x": 30530.244603701998,
+   "y": 78098.5978316,
+   "r": 11732.42274235,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 46,
+   "x": 18983.59055056,
+   "y": 36868.480324456,
+   "r": 7023.700320800001,
+   "volume": 0.5,
+   "panel": "eden"
+  },
+  {
+   "i": 47,
+   "x": 12724.000833170001,
+   "y": 26406.8174736,
+   "r": 12542.846210239999,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 48,
+   "x": 47082.553322661,
+   "y": 36715.792,
+   "r": 7514.256,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 49,
+   "x": 99572.463574438,
+   "y": 69688.712,
+   "r": 21001.719332,
+   "volume": 0.5,
+   "panel": "garden"
+  },
+  {
+   "i": 50,
+   "x": 152240.5955411,
+   "y": 7485.744000000001,
+   "r": 19009.971851,
+   "volume": 0.2,
+   "panel": "hell"
+  },
+  {
+   "i": 51,
+   "x": 137802.8136456,
+   "y": 15040.078179068001,
+   "r": 20195.971923,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 52,
+   "x": 150190.9100154,
+   "y": 70045.176,
+   "r": 8766.632,
+   "volume": 0.2,
+   "panel": "hell"
+  },
+  {
+   "i": 53,
+   "x": 68203.282188813,
+   "y": 26021.872,
+   "r": 12523.76,
+   "volume": 0.1,
+   "panel": "garden"
+  },
+  {
+   "i": 54,
+   "x": 22931.849913799997,
+   "y": 28517.12,
+   "r": 8140.4439999999995,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 55,
+   "x": 57840.6411566,
+   "y": 39623.4421132,
+   "r": 12364.4866087574,
+   "volume": 0.5,
+   "panel": "garden"
+  },
+  {
+   "i": 56,
+   "x": 13841.9170494,
+   "y": 75748.59999999999,
+   "r": 9236.08044719,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 57,
+   "x": 129266.87400121,
+   "y": 18142.12299384,
+   "r": 5538.1229081475,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 58,
+   "x": 17941.29905909,
+   "y": 84303.73599999999,
+   "r": 23482.05,
+   "volume": 0.5,
+   "panel": "eden"
+  },
+  {
+   "i": 59,
+   "x": 31281.244395862002,
+   "y": 76827.928434,
+   "r": 11147.7275247,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 60,
+   "x": 51935.998436206995,
+   "y": 78056.0894996,
+   "r": 5947.6923470033,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 61,
+   "x": 84393.32925220001,
+   "y": 55674.877368703994,
+   "r": 12542.8064786114,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 62,
+   "x": 33982.356898542996,
+   "y": 31725.296,
+   "r": 8737.4725382245,
+   "volume": 0.1,
+   "panel": "eden"
+  },
+  {
+   "i": 63,
+   "x": 25783.594444633,
+   "y": 76996.224,
+   "r": 9392.82,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 64,
+   "x": 135827.0339586,
+   "y": 21646.80485788,
+   "r": 8820.1871357222,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 65,
+   "x": 151215.550206432,
+   "y": 80694.819071864,
+   "r": 12448.7903774709,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 66,
+   "x": 39418.492645404,
+   "y": 34755.24,
+   "r": 5317.129202756701,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 67,
+   "x": 87457.0323157,
+   "y": 45000.376636264,
+   "r": 12412.83862315,
+   "volume": 0.5,
+   "panel": "garden"
+  },
+  {
+   "i": 68,
+   "x": 107757.600647109,
+   "y": 36562.3431596,
+   "r": 7004.489953134301,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 69,
+   "x": 64170.161045078,
+   "y": 24828.517683448,
+   "r": 4566.8193445351,
+   "volume": 0.4,
+   "panel": "garden"
+  },
+  {
+   "i": 70,
+   "x": 19367.16983731,
+   "y": 56677.776,
+   "r": 9214.586230996,
+   "volume": 0.1,
+   "panel": "eden"
+  },
+  {
+   "i": 71,
+   "x": 147511.227544643,
+   "y": 12463.000570576,
+   "r": 7594.54582536,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 72,
+   "x": 98388.891389861,
+   "y": 38858.856330596,
+   "r": 12096.417201010301,
+   "volume": 0.5,
+   "panel": "garden"
+  },
+  {
+   "i": 73,
+   "x": 3662.6366378222,
+   "y": 40202.996968816005,
+   "r": 9421.27241725,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 74,
+   "x": 137358.0636186,
+   "y": 63628.824,
+   "r": 15654.7,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 75,
+   "x": 122865.4746184,
+   "y": 32566.573229884,
+   "r": 2714.1372756998,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 76,
+   "x": 105454.1763861,
+   "y": 39032.808,
+   "r": 11271.384,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 77,
+   "x": 137827.0627759,
+   "y": 17438.345692068,
+   "r": 2784.8657112501996,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 78,
+   "x": 47439.022739233005,
+   "y": 34577.008,
+   "r": 7244.5356632456005,
+   "volume": 0.5,
+   "panel": "garden"
+  },
+  {
+   "i": 79,
+   "x": 24623.570999078,
+   "y": 42154.7464468,
+   "r": 5949.4419319300005,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 80,
+   "x": 108840.62285013299,
+   "y": 47231.48,
+   "r": 13463.042,
+   "volume": 0.1,
+   "panel": "garden"
+  },
+  {
+   "i": 81,
+   "x": 34455.612255679,
+   "y": 24265.588754372,
+   "r": 8734.3822534804,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 82,
+   "x": 5286.686118199999,
+   "y": 83412.576,
+   "r": 12446.4884008,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 83,
+   "x": 113652.9497983,
+   "y": 26556.568,
+   "r": 9060.0427351567,
+   "volume": 0.1,
+   "panel": "garden"
+  },
+  {
+   "i": 84,
+   "x": 128576.23090489999,
+   "y": 71213.348273736,
+   "r": 7648.80188462,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 85,
+   "x": 127001.50897719999,
+   "y": 10127.378842979999,
+   "r": 10059.30789421,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 86,
+   "x": 113474.7053841,
+   "y": 38141.648,
+   "r": 7148.3117328,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 87,
+   "x": 125118.837810108,
+   "y": 26407.516321272,
+   "r": 8467.103642903801,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 88,
+   "x": 35229.9943774,
+   "y": 72183.96,
+   "r": 5322.598,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 89,
+   "x": 105206.104965285,
+   "y": 36052.5617653,
+   "r": 8140.4439999999995,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 90,
+   "x": 27031.230514567,
+   "y": 86086.056,
+   "r": 13776.135999999999,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 91,
+   "x": 71690.488094285,
+   "y": 31396.673264256002,
+   "r": 11739.49240487,
+   "volume": 0.5,
+   "panel": "garden"
+  },
+  {
+   "i": 92,
+   "x": 148900.546790021,
+   "y": 24447.994324,
+   "r": 7549.281450067199,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 93,
+   "x": 140031.5732846,
+   "y": 27982.424,
+   "r": 7109.6759332,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 94,
+   "x": 141695.0886707,
+   "y": 76445.2821532,
+   "r": 8068.704771780001,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 95,
+   "x": 26140.061512999997,
+   "y": 76996.224,
+   "r": 14031.64105511,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 96,
+   "x": 19643.983443872,
+   "y": 11297.709773584,
+   "r": 12163.921065800001,
+   "volume": 0.8,
+   "panel": "eden"
+  },
+  {
+   "i": 97,
+   "x": 30534.331576230998,
+   "y": 11337.890039200001,
+   "r": 12218.6570198885,
+   "volume": 0.5,
+   "panel": "eden"
+  },
+  {
+   "i": 98,
+   "x": 94225.4357889,
+   "y": 24596.016000000003,
+   "r": 6608.141284141299,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 99,
+   "x": 79605.9184811,
+   "y": 38460.638722,
+   "r": 10936.658335540002,
+   "volume": 1,
+   "panel": "garden"
+  },
+  {
+   "i": 100,
+   "x": 132627.9333948,
+   "y": 36294.442640400004,
+   "r": 6461.65901952,
+   "volume": 1,
+   "panel": "hell"
+  },
+  {
+   "i": 101,
+   "x": 33021.224537924005,
+   "y": 42328.40501368,
+   "r": 11584.478,
+   "volume": 1,
+   "panel": "eden"
+  },
+  {
+   "i": 102,
+   "x": 67581.161279873,
+   "y": 81145.29563960001,
+   "r": 24731.408556575,
+   "volume": 0.7,
+   "panel": "garden"
+  },
+  {
+   "i": 103,
+   "x": 90304.293497,
+   "y": 24417.784000000003,
+   "r": 12162.553659064399,
+   "volume": 0.1,
+   "panel": "garden"
+  },
+  {
+   "i": 104,
+   "x": 25783.594444633,
+   "y": 76283.296,
+   "r": 15654.7,
+   "volume": 1,
+   "panel": "eden"
+  }
+ ]
+}

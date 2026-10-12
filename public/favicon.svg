@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- The triptych open: Eden, the garden, Hell, in the painting's own colours -->
+  <defs>
+    <linearGradient id="eden" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9cc3d6"/><stop offset=".22" stop-color="#5d8a9e"/>
+      <stop offset=".3" stop-color="#8aa64a"/><stop offset="1" stop-color="#4e6b2a"/>
+    </linearGradient>
+    <linearGradient id="garden" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9dbe0"/><stop offset=".2" stop-color="#a9c3cf"/>
+      <stop offset=".28" stop-color="#5f93b8"/><stop offset=".36" stop-color="#a2b552"/>
+      <stop offset="1" stop-color="#7f9440"/>
+    </linearGradient>
+    <linearGradient id="hell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1a14"/><stop offset=".18" stop-color="#b04a1c"/>
+      <stop offset=".3" stop-color="#1a1210"/><stop offset="1" stop-color="#3a2416"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="#000"/>
+  <rect x="7" y="12" width="12" height="40" fill="url(#eden)"/>
+  <rect x="20.5" y="12" width="23" height="40" fill="url(#garden)"/>
+  <rect x="45" y="12" width="12" height="40" fill="url(#hell)"/>
+  <!-- the Fountain of Life and the pink towers of the garden -->
+  <rect x="12.3" y="19" width="1.6" height="13" fill="#e8a7a0"/>
+  <rect x="25" y="17" width="2.4" height="6" fill="#e8a7a0"/>
+  <circle cx="32" cy="21.5" r="3" fill="#3c6aa6"/>
+  <rect x="36.6" y="17" width="2.4" height="6" fill="#e8a7a0"/>
+  <circle cx="32" cy="34" r="3.6" fill="#3d6f9a"/>
+  <!-- Hell's burning city and the Tree Man's pale body -->
+  <circle cx="51" cy="18.5" r="1.6" fill="#ffb347"/>
+  <ellipse cx="51" cy="30" rx="3.6" ry="2.4" fill="#ddd6c8"/>
+</svg>
