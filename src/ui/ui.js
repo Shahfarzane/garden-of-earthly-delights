@@ -119,7 +119,8 @@ export class UI {
         <dt>Painted this visit</dt><dd data-k="session">…</dd>
         <dt>Screen pixels</dt><dd data-k="px">…</dd>
       </dl>
-      <button class="switch" role="switch" aria-checked="false"><span>Show the strokes<small>Each stroke in its own colour</small></span><span class="track"></span></button>`;
+      <button class="switch" role="switch" aria-checked="false"><span>Show the strokes<small>Each stroke in its own colour</small></span><span class="track"></span></button>
+      <a class="source" href="https://github.com/Shahfarzane/garden-of-earthly-delights" target="_blank" rel="noopener"><span>Source on GitHub<small>Analyzer, painter and sound, MIT licence</small></span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 13 13 7M8 7h5v5"/></svg></a>`;
     this.strokeSwitch = this.strokesPop.querySelector('.switch');
     this.strokeSwitch.addEventListener('click', () => this.setStrokeView(!this.strokeView));
 

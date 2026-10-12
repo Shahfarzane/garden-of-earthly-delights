@@ -112,6 +112,10 @@ body.reading .pop { right: calc(min(440px, 100vw) + 12px); }
 .switch .track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--black); transition: transform 0.2s var(--ease); }
 .switch[aria-checked='true'] .track { background: var(--white); }
 .switch[aria-checked='true'] .track::after { transform: translateX(14px); }
+.pop .source { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule); color: var(--white); text-decoration: none; }
+.pop .source small { display: block; color: var(--grey-2); font-size: var(--size-1); }
+.pop .source svg { width: 18px; height: 18px; flex: none; color: var(--grey-2); transition: color 0.15s; }
+.pop .source:hover svg { color: var(--white); }
 
 /* ---------- minimap ---------- */
 .minimap { position: fixed; left: 12px; bottom: 12px; padding: 0; background: var(--black); border: 1px solid var(--rule); border-radius: var(--radius); transition: opacity 0.4s var(--ease), transform 0.4s var(--ease); }
