@@ -279,3 +279,15 @@ The switch, when Shahin deploys (not done here):
 Old shared links such as mirage.nerd.ceo/#story=… will open Mirage's index after the switch. A redirect for them has to be in Mirage's page script, since a server never sees the hash. That is a follow-up for Mirage.
 
 Open question for Shahin: when to push and deploy this branch.
+
+## Round 8 (2026-10-20): the frame stays, the painting zooms
+
+Shahin: "the frame should stay fixed where it is and we can only zoom", meaning a trackpad pinch zooms the painting and never the frame. This replaces Round 2's infinite board, where the whole triptych could shrink to an object on the dark board.
+
+- At rest, the framed triptych fills the screen under the navbar, inside the margins, above a band as tall as the navbar for the zoom lozenges, as Mirage's painting box does (`Camera.layout`, `setBox` from `src/ui/ui.js`). The post pass draws the outer frame, the drop shadow and the board at that rest view, so they never move, and the painting through the frame's opening at the camera. Between the wings, their frames and hinges stay part of the painting and move with it. The lip shading follows the fixed opening.
+- The camera zooms in from rest and never out of it. It is clamped so the opening only ever shows painting, and every route goes through the same clamp: pinch as ctrl + wheel (Chrome, Firefox) and as gesture events (Safari), touch pinch, drag, two-finger scroll, arrow keys, `+`, `-`, `0`, double-click, the zoom lozenges, the minimap and story flights. A flight's zoom-out arc stops at rest. At rest the painting cannot pan, since it already fills the opening.
+- With the wings shut, the opening is the centre panel's and the shutters are clipped to it, so the exterior zooms inside the centre frame.
+- The living layer, story markers and taps stay inside the opening. Tiles are requested only for what it shows: at the Round 6 z7 view, 144 tiles instead of 176, filled in 32 frames instead of 38, none late.
+- Checked with CDP input at 1728x990: 30 of 30 checks. Trackpad pinch held the point under the fingers to 0.00 px. Screenshots of four strips of the frame stayed byte-identical through pinching, pinching out past rest, Safari gestures (dispatched from script, since Chrome cannot synthesize them, and every one prevented), drags and scrolls to all four edges, keys, double-click, the zoom-out lozenge, a story flight (the opening stayed on painting every frame) and the closed exterior. At 390x844 with touch, 8 of 8, the page never scaled. The interaction checks of Round 7 pass again: 43, 43 and 42.
+
+On a phone held upright, the framed triptych is short, about 205 px of an 844 px screen, so the zoomed painting is seen through that strip. Turning the phone fills it. Should the frame hug the screen instead, cropping the triptych at rest, that is Shahin's call.
