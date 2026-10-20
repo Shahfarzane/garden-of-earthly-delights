@@ -351,3 +351,7 @@ Verified, the JS at 9b0e6ae against the TypeScript:
 ## Round 11 (2026-10-20): the site name alone in the navbar
 
 Shahin asked for the painting's name to leave the navbar, on Mirage's painting pages and here. The breadcrumbs are now "Mirage" alone, still leading to the Mirage index (`src/ui/ui.ts`); the title stays in the page's `<title>` and the canvas's label. Mirage made the same change in its own repository.
+
+## Round 12 (2026-10-20): Mirage's icons, title and link preview
+
+Shahin asked for the icons, titles and link previews to be right across Mirage, and for the Garden to match it. The Garden now uses Mirage's icon set, the site's initial M in Söhne Halbfett, white on black: `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, and `icon-192.png` and `icon-512.png` in the manifest, which now lists the 512 icon once as `any` and once as `maskable` (the letter sits inside the safe zone). The tab title follows Mirage's pages, "The Garden of Earthly Delights · Mirage", and the link preview's title is the painting's name. `og.jpg` is Mirage's preview for the Garden: the whole triptych on black inside a 60px margin, from the capture behind Mirage's poster (Mirage's `scripts/images.mjs`). The head also names the author, the X handle, the image type and alt text, and carries the same schema.org data as Mirage's painting pages: the page, about Bosch's painting.
