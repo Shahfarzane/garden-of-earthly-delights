@@ -255,7 +255,7 @@ The 8.3 MB measured earlier is the dpr 1 case. On a Retina screen `renderLevel` 
 
 Proposal, not built, biggest first:
 
-1. Show the first view one level coarser on dense screens, then refine. Request z3 for the opening whole-triptych view and z4 once it is complete: 9.2 MB and 97 requests before the first full view at dpr 2 instead of 24 MB and 317, with the sharper level painting in afterwards over the coarser one as tiles already do. Pixels stay the analyzer's at every level.
+1. Show the first view one level coarser on dense screens, then refine. Request z3 for the opening whole-triptych view and z4 once it is complete: the dpr 1 figures, 8.5 MB and 97 requests, before the first full view at dpr 2 instead of 24 MB and 317, with the sharper level painting in afterwards over the coarser one as tiles already do. Pixels stay the analyzer's at every level.
 2. One file per level for z0 to z3 (83 files become 4), stored as byte planes with gzip and decoded by `DecompressionStream`: 7.7 MB of strokes become about 6.2 MB. The records after decoding are the same bytes, so the GPU twin is untouched.
 3. Load `effects.png` (0.43 MB) after the first full view; only the water, fire and sway effects use it.
 4. Version the data path (`/data/v1/strokes/...`) and serve it `immutable` for a year instead of `max-age=86400`, so a return visit after a day does not revalidate 300 files.
