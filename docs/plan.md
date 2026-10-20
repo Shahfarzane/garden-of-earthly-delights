@@ -145,3 +145,58 @@ Design of the next step, an ancestor stroke index, not implemented (owner decisi
 - CPU side, per file at load: a 16 px grid (32x32 cells over [-64, 448)) of Uint16 record indices whose quad (`strokeExtent` at scale 1, padded 1 px) intersects the cell, about 2.5 entries per record, 5 B per record, about 30 MB with z0..z5 fully loaded. Per (tile, file): mark the cells under the slot in an n-bit set, emit ascending indices, upload to a transient index buffer, one `drawArraysInstanced` per file with count = touching.
 - Expected gain: a z7 tile draws about 25k instances instead of 166k, vertex time drops from 1.2 to about 0.2 ms, fragment time stays (1.1 to 2.0 ms at z7, 2.6 ms at z8, mostly coarse strokes magnified into the slot). Fills get 1.6 to 1.8 times faster (35 frames to about 20 for 176 tiles), not the 5 times hoped for; while the tile must equal the analyzer's simulation, the magnified ancestors' fragments are the floor.
 - Tradeoff to decide: a vertex shader data path change, 33 % more stroke memory and the CPU index, for about 1.7x on cold fills. Anything with a bigger upside changes what is drawn (ancestors painted once per parent and upsampled, for instance) and gives up pixel identity.
+
+## Round 6 (2026-10-20): an adaptive paint budget
+
+Shahin's call after Round 5: keep the budget logic, make it adapt to the device, defer the ancestor stroke index. `FRAME_INSTANCE_BUDGET` became `FrameBudget` in `src/engine/budget.js`, with 600k as its ceiling. Only the number of instances drawn per frame changes. What is drawn and the order stay the analyzer's.
+
+Method as in Round 5, on the M1 Pro (MBPro16, 16-core GPU), Chrome for Testing 155.0.8059.84 (ANGLE Metal), a headed window at 1600x1000 CSS px and dpr 2 (3200x2000 canvas), 120 Hz display. The view is "Ear and Knife" at scale 0.1 (z7) and 0.2 (z8), 176 tiles each. A cold fill means: files loaded, tiles of z3 and up dropped, paint-in off. Raw rAF intervals were recorded for every callback in the visible window, and loop intervals for every frame the painter ran.
+
+To stand in for a slow GPU, the bench repeats every stroke draw k-1 more times into an atlas slot nobody sees: the same instances, so the same vertex and fragment work, and stroke painting costs k times as much. Compositing and the post pass keep their real cost. With a fixed budget at k=4, 100k and 150k per frame run with no late frame and 300k runs late (raw p50 16.6 ms, max 26), so this "GPU" can paint 150k to 300k a frame.
+
+### The 60 fps cap dropped frames
+
+`MIN_FRAME_MS = 1000 / 61` skipped every other 120 Hz frame as intended, but rAF timestamps jitter between 7.3 and 9.3 ms, so two frames sometimes add up to less than 16.39 ms and the loop waited for a third. At idle 29 of about 220 loop frames ran at 25 ms, and every fill in the table below had 3 to 7 such frames. The threshold is now 12.5 ms, one and a half 120 Hz frames (commit 4012901): 241 loop frames in 4 s at idle, none over 20 ms. It still runs every frame at 60 Hz, and 72 fps instead of 48 on a 144 Hz screen.
+
+### How the budget adapts
+
+- The signal is the raw interval between animation frames. When the GPU cannot finish a frame's strokes in time, the next frame comes late. Late means past the loop's 16.7 ms slot by half a refresh: 20.8 ms at 120 Hz, 25 ms at 60 Hz. A 16.7 ms interval at 120 Hz only skips a frame the loop would not paint, and counting it as late cut the budget in steps from 253k to 51k in one trace.
+- A late frame after painting cuts the budget to what was painted times 16.7 ms over the interval, 0.25 to 0.8. The two frames after a cut cannot cut again, because their lateness can still be the GPU finishing frames queued before it. Without this hold one fill cascaded from 260k to the 20k floor.
+- A second late frame within 30 frames also caps regrowth at 90% of what was painted. One late frame alone leaves the cap: in one suite run a single outside event (other sessions share this GPU) set the cap at 195k on the fast path, and the next four fills ran slow until it relaxed.
+- On-time frames where the budget held work back grow it by 20% and relax the cap by 0.3%. Idle frames change neither, so a learned limit survives between fills and a slow device does not re-learn it with a late frame each time.
+- Stalls longer than four frames (a shader compile, a busy main thread) and late frames that painted under half the budget cut by at most a half and leave the cap alone. Intervals while nothing paints measure the refresh rate.
+- The budget is strict. The shipped code checked it only between tiles, so a frame painted 602k to 772k at 600k, and one z8 tile (180k instances) could never be split. Now a frame stops at its budget inside a file and the next frame resumes at the same record. A tile stays behind its parent until its coarser levels are all down, as before.
+- The budget is a whole number. While it was fractional, `start * 12` stopped being a multiple of 4, ANGLE converted the vertex buffer on the fly (stalls of 33 to 118 ms) and the draws read misaligned records.
+
+Pixel identity: 24 tiles at z7 and 24 at z8, painted with paint-in off at 600k and again at 30,000 and at 7,777 instances per frame (763 and 1,033 frames of resumes inside files), read back byte-identical when they land in the same atlas slot. Tiles that land in another slot differ by at most 1 in about 0.05% of bytes, 600k against 600k included: vertex snapping depends on where the slot sits in the atlas, in the shipped code too.
+
+### Before and after
+
+| cold fill, 176 tiles | frames | ms | raw rAF p50 / max | loop frames over 20 ms | over 34 ms |
+| --- | --- | --- | --- | --- | --- |
+| z7, before (bf717e0) | 34 | 575 to 592 | 8.3 / 9.3 | 3 to 5, all the cap | 0 |
+| z7, after | 38 | 617 | 8.3 / 9.4 | 0 | 0 |
+| z8, before | 44 | 758 to 775 | 8.3 / 9.3 | 5 to 7, all the cap | 0 |
+| z8, after | 51 | 833 | 8.3 / 9.4 | 0 | 0 |
+| z7 x4 GPU, before | 34 | 925 | 25.0 / 41.5 | 30 of 33 | 1 |
+| z7 x4, after, budget starting at 600k | 90 | 1,550 | 8.3 / 26.0 | 8 | 0 |
+| z7 x4, after, learned | 161 | 2,667 | 8.3 / 9.4 | 0 | 0 |
+| z8 x4 GPU, before | 44 | 1,346 | 29.6 / 84.2 | 41 of 43 | 6 |
+| z8 x4, after, starting at 600k | 93 | 1,600 | 9.0 / 25.1 | 8 | 0 |
+| z8 x4, after, learned | 185 | 3,067 | 8.3 / 9.4 | 0 | 0 |
+| z7 x8 GPU, after, starting at 600k | 211 | 3,588 | 8.3 / 50.6 | 5 | 2 |
+| z7 x8, after, learned | 177 | 2,992 | 8.4 / 25.8 | 7 | 0 |
+
+At full speed the budget never left 600k and no frame was late, before or after. This M1 Pro paints the shipped code's 772k frames on time too. The strict budget costs 4 frames at z7 and 7 at z8 (fills about 7% longer) because frames no longer overrun. A 700k ceiling would bring the old fill speed back on this Mac, and the controller would make it safe on slower GPUs; it stays at 600k as decided. On the slow GPU the fill takes longer, since the same work now goes into frames that make their slot. The first fill on a slow device costs 5 to 8 frames of about 25 ms (two of about 50 ms at x8) while the budget comes down from 600k. Starting lower would cost the fast Macs a few frames of their first fill instead.
+
+| flight, whole painting to "Ear and Knife", paint-in on | ms | raw rAF max | over 20 ms | over 34 ms |
+| --- | --- | --- | --- | --- |
+| before | 2,150 to 2,192 | 9.4 | 0 | 0 |
+| after | 2,158 to 2,174 | 9.4 | 0 | 0 |
+| x4 GPU, before | 2,775 | 58.4 | 46 | 28 |
+| x4, after, budget starting at 600k | 4,434 | 25.4 | 3 | 0 |
+| x4, after, second flight | 4,184 | 16.7 | 0 | 0 |
+
+A pan at 3 px per frame at z7 and z8 runs at raw p95 9.3 ms and max 9.4 ms, at full speed and on the x4 GPU alike, with the budget at 600k: a slow pan starts few tiles per frame. Idle at z7 is p50 8.3, p95 9.3.
+
+Limits: measured on this Mac only. The simulation scales stroke painting, not compositing or the post pass, and no phone was at hand. The ancestor stroke index of Round 5 stays unbuilt.
