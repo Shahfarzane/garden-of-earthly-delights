@@ -200,3 +200,64 @@ At full speed the budget never left 600k and no frame was late, before or after.
 A pan at 3 px per frame at z7 and z8 runs at raw p95 9.3 ms and max 9.4 ms, at full speed and on the x4 GPU alike, with the budget at 600k: a slow pan starts few tiles per frame. Idle at z7 is p50 8.3, p95 9.3.
 
 Limits: measured on this Mac only. The simulation scales stroke painting, not compositing or the post pass, and no phone was at hand. The ancestor stroke index of Round 5 stays unbuilt.
+
+## Round 7 (2026-10-20): part of Mirage
+
+Mirage is Shahin's site for every painting he repaints with code, built in klim-paintings (React 19, a layout taken from Klim Type Foundry's family pages). The Garden has to look like part of it. Shahin's preference: one project if possible, otherwise a matching interface.
+
+### One project or two
+
+Both checkouts, read on 2026-10-20:
+
+| | Mirage (klim-paintings) | the Garden |
+| --- | --- | --- |
+| stack | React 19 prerendered per route, TypeScript, Tailwind 4, Vite+ with oxlint and oxfmt, pnpm | plain JavaScript modules, Vite 8, npm |
+| a painting | one `payload.gz` of 3 to 5 MB, fetched whole; every stroke drawn every frame into a canvas capped at 2.4 MP | 13,715 stroke files (690 MB) in a tile pyramid, streamed per view, each tile painted once into an atlas |
+| a page | a scrolling document: navbar, painting box, information, footer | one fixed full-screen board that takes wheel, pinch, drag and keys |
+| build output | 86 files, 26 MB | 13,775 data files, 691 MB, plus the site |
+| repository | private (Shahfarzane/repainted-showcase), Söhne fonts committed | public and MIT (Shahfarzane/garden-of-earthly-delights), fonts kept out; the strokes panel links to it |
+| hosting | none configured yet; takes over mirage.nerd.ceo | the Cloudflare Worker `mirage` on mirage.nerd.ceo |
+
+A merge would share the design tokens and the navbar. The two painting runtimes have nothing in common: Mirage's draws a whole painting from one buffer, and the Garden's engine exists because 57.9 million strokes do not fit in one. What a merge would cost:
+
+- The public source. The Garden's code would move into a private repository that ships licensed fonts, so either its MIT release and the source link end, or Mirage goes public after its fonts leave the repository.
+- Size on every deploy. Each Mirage build would copy 691 MB and 13,800 files. Cloudflare allows 20,000 files per Worker version on the Free plan and 100,000 on Paid, so a second painting at this depth would not fit on Free.
+- Tooling. Mirage's dev server, prerenderer, linter and formatter would all need to skip the stroke data and the engine, as `vite.config.js` here already does for the watcher.
+- The first load. React and Mirage's shell would add script to a page whose content is one canvas.
+- The analyzer (`tools/`, Node with sharp) and its regeneration steps would live in a site's repository.
+
+Decision: the Garden stays its own project, and its interface takes Mirage's design exactly: Mirage's tokens, lozenges, navbar and menu, with a breadcrumb "Mirage / The Garden of Earthly Delights" whose first crumb leads to the Mirage index (`MIRAGE_URL` in `src/ui/ui.js`). Mirage already lists the Garden as an external work behind one constant, `GARDEN_URL` in its catalog. To serve both under one address without one repository, Cloudflare can route a path of Mirage's domain (mirage.nerd.ceo/garden/*, say) to the Garden's Worker. The Garden would then build with a base of `/garden/`: its fetches are relative already, and seven absolute paths in `index.html` would follow the base. That choice, and both addresses, are open questions for Shahin.
+
+### The interface in Mirage's design
+
+Values come from klim-paintings' source, each cited with file and line at the top of `src/style.css`, and were checked against its running dev server's computed styles at 1440x900 and 390x844: lozenges 28 px high with 0 8px padding and 2 px corners, 5 px apart, 10 px above and below, 20 px margins (10 px on phones), the menu panel in the last two columns of twelve (three at 1366 and below, four at 1024 and below) on `#1c1c1c`, separators 1 px `#383838` with 5 px margins, and the colour mixes `#e2e2e2` to `#1c1c1c` of its black and white scheme. The fonts stay Die Grotesk and Martina Plantijn.
+
+| here before | here now, in Mirage's terms |
+| --- | --- |
+| icon rail bottom right, ten buttons with tooltips | navbar: breadcrumbs "Mirage / The Garden of Earthly Delights" on the left; Exterior, Strokes and Sound lozenges and the menu on the right, wrapping under the menu below 1024 px and stacking beside the crumbs on phones, as Mirage's do |
+| story markers, living painting, varnish and full screen as icons, hidden on phones | menu items with an On or Off value, on every screen |
+| zoom out, zoom in, whole painting in the rail | three lozenges bottom right |
+| sound and strokes popovers above the rail | panels under the navbar in the right-hand columns; the toggles are lozenges that stay filled while on, as Mirage's Sound and Strokes |
+| story drawer full height on the right | a panel in the right-hand columns under the navbar (four of twelve, five at 1366, six at 1024), a sheet at the foot below 768 px |
+
+Checked with real input (CDP mouse, wheel, keys and pinch, no JavaScript clicks) at 1440x900, 1728x990 and 390x844: 41, 41 and 40 checks pass, covering every lozenge and menu item, the sound modes, the stroke view, arrow keys in the menu, Escape returning focus, drag, two-finger scroll, trackpad and touch pinch with the page left unscaled, the pan and zoom keys, hold L, a story opened from its marker and closed, the minimap and the wings. Away from the lozenges, `elementFromPoint` finds the canvas everywhere, the navbar row included.
+
+### The first visit
+
+Measured on the live site with a cold cache in Chrome for Testing at 1728x990, until every tile of the first view was painted:
+
+| | requests | MB | strokes | first contentful paint | full view |
+| --- | --- | --- | --- | --- | --- |
+| dpr 1 | 97 | 8.5 | 83 files, 7.7 MB (z0 to z3) | 220 to 248 ms | 1.18 to 1.21 s |
+| dpr 2, as on the MacBook | 317 | 24.0 | 303 files, 23.2 MB (z0 to z4) | 168 ms | 2.14 to 2.51 s |
+
+The 8.3 MB measured earlier is the dpr 1 case. On a Retina screen `renderLevel` picks z4 for the whole triptych, and a z4 tile needs every coarser file under it, so the first view costs three times as much. The stroke files go out uncompressed (`application/octet-stream`), and generic compression gains little: brotli at its best level saves 12 to 13% on them, splitting each record's 12 bytes into planes first saves 21%.
+
+Proposal, not built, biggest first:
+
+1. Show the first view one level coarser on dense screens, then refine. Request z3 for the opening whole-triptych view and z4 once it is complete: 9.2 MB and 97 requests before the first full view at dpr 2 instead of 24 MB and 317, with the sharper level painting in afterwards over the coarser one as tiles already do. Pixels stay the analyzer's at every level.
+2. One file per level for z0 to z3 (83 files become 4), stored as byte planes with gzip and decoded by `DecompressionStream`: 7.7 MB of strokes become about 6.2 MB. The records after decoding are the same bytes, so the GPU twin is untouched.
+3. Load `effects.png` (0.43 MB) after the first full view; only the water, fire and sway effects use it.
+4. Version the data path (`/data/v1/strokes/...`) and serve it `immutable` for a year instead of `max-age=86400`, so a return visit after a day does not revalidate 300 files.
+
+Open questions for Shahin: the Mirage index address (`MIRAGE_URL`, https://mirage.nerd.ceo/ for now) and the Garden's own address once Mirage takes that domain over, including whether to route a path of it to the Garden's Worker; and when to push and deploy this branch.
