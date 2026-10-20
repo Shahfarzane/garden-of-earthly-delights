@@ -1,12 +1,33 @@
-// Brings figures to life from rig data (src/living/rigs.js): displacement rigs (rotate,
+// Brings figures to life from rig data (src/living/rigs.ts): displacement rigs (rotate,
 // translate, scale) are evaluated here and handed to the post shader; overlay rigs (eyes,
 // splash, glow) are drawn on the living layer's Canvas2D.
 import { WORLD_W as W, WORLD_H as H } from '../world.ts';
+import type { Vec2 } from '../world.ts';
+import type { Camera } from '../engine/camera.ts';
+import type { ActiveRig } from '../engine/post.ts';
+import type { OverlayRig, Rig, ShiftRig, TurnRig, Wave, WarpRig } from './rigs.ts';
+
+// A warp rig in world px and radians, as evaluated each frame; cur is this frame's motion.
+type Warp = {
+  id: string; cx: number; cy: number; rx: number; ry: number; angle: number; feather: number; px: number; py: number;
+  period: number; phase: number; wave: Wave; near: boolean; env: number; reach: number;
+  cur?: { a: number; b: number } | null;
+} & (Pick<TurnRig, 'kind' | 'amount'> | Pick<ShiftRig, 'kind' | 'amount'>);
+// What overlays keep between frames.
+interface OverlayState {
+  visible?: boolean; eyes?: { x: number; y: number; r: number }[]; lx?: number; ly?: number;
+  next?: number; blink?: number | null;
+  drops?: { x: number; y: number; y0: number; vx: number; vy: number; t: number; dead?: boolean }[];
+}
+type Overlay = OverlayRig & { state: OverlayState };
+// Whether a world point, padded by m, is near enough the view to draw.
+export type InView = (x: number, y: number, m?: number) => boolean;
 
 const TAU = Math.PI * 2;
-const KIND = { rotate: 1, translate: 2, scale: 3 };
+const KIND: Record<WarpRig['kind'], number> = { rotate: 1, translate: 2, scale: 3 };
+const isWarp = (r: Rig): r is WarpRig => !!KIND[r.kind as WarpRig['kind']];
 
-function wave(kind, t, period, phase) {
+function wave(kind: Wave, t: number, period: number, phase: number): number {
   const u = t / period + phase / TAU;
   switch (kind) {
     case 'gallop': return Math.abs(Math.sin(Math.PI * u)) * 2 - 1;
@@ -15,15 +36,19 @@ function wave(kind, t, period, phase) {
     default: return Math.sin(TAU * u);
   }
 }
-const hexRgb = (h) => { const n = parseInt(h.replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const hexRgb = (h: string): [number, number, number] => { const n = parseInt(h.replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 
 export class Animator {
-  constructor(rigs) {
+  enabled: boolean;
+  warps: Warp[];
+  overlays: Overlay[];
+
+  constructor(rigs: Rig[]) {
     this.enabled = true;
     this.warps = [];
     this.overlays = [];
     for (const r of rigs) {
-      if (KIND[r.kind]) {
+      if (isWarp(r)) {
         const reg = r.region;
         const angle = ((reg.angle || 0) * Math.PI) / 180;
         this.warps.push({
@@ -32,7 +57,7 @@ export class Animator {
           amount: r.amount, period: r.period || 6, phase: r.phase || 0, wave: r.wave || 'sine',
           near: r.trigger === 'near', env: r.trigger === 'near' ? 0 : 1,
           reach: Math.max(reg.rx * W, reg.ry * H),
-        });
+        } as Warp); // kind and amount come from the same rig
       } else {
         this.overlays.push({ ...r, state: {} });
       }
@@ -40,10 +65,10 @@ export class Animator {
   }
 
   // Pick and evaluate the warps that matter for this view; returns the list for Post.setRigs.
-  frame(camera, time, dt, pointer) {
+  frame(camera: Camera, time: number, dt: number, pointer: Vec2 | null | undefined): ActiveRig[] {
     const v = camera.view();
-    const out = [];
-    const cand = [];
+    const out: ActiveRig[] = [];
+    const cand: Warp[] = [];
     for (const r of this.warps) {
       r.cur = null;
       const m = r.reach * 1.2;
@@ -73,9 +98,9 @@ export class Animator {
     return [...eyes, ...out].slice(0, 16);
   }
 
-  eyeWarps(camera, time, dt, pointer) {
+  eyeWarps(camera: Camera, time: number, dt: number, pointer: Vec2 | null | undefined): ActiveRig[] {
     const v = camera.view();
-    const list = [];
+    const list: ActiveRig[] = [];
     for (const r of this.overlays) {
       if (r.kind !== 'eyes') continue;
       const st = r.state;
@@ -115,7 +140,7 @@ export class Animator {
 
   // Where the shader's warp carries the painted point (x, y) right now: eyes attached to a
   // moving head ride along with it instead of drifting off the face.
-  carry(id, x, y) {
+  carry(id: string, x: number, y: number): Vec2 {
     const r = this.warps.find((w) => w.id === id);
     if (!r || !r.cur) return [x, y];
     const dx = x - r.cx, dy = y - r.cy, ca = Math.cos(r.angle), sa = Math.sin(r.angle);
@@ -133,7 +158,7 @@ export class Animator {
   }
 
   // Overlay rigs, drawn in world coordinates (the caller has set the camera transform).
-  draw(ctx, camera, time, dt, pointer, inView, splash) {
+  draw(ctx: CanvasRenderingContext2D, camera: Camera, time: number, dt: number, pointer: Vec2 | null | undefined, inView: InView, splash?: (x: number, y: number, r: number) => void): void {
     if (!this.enabled) return;
     const s = camera.scale;
     for (const r of this.overlays) {
@@ -145,7 +170,7 @@ export class Animator {
 
   // The eyes themselves move in the shader (eyeWarps); here only what paint cannot do:
   // a soft glow for eyes in the dark, and the lids closing for a blink.
-  drawEyes(ctx, r, s, time, dt) {
+  drawEyes(ctx: CanvasRenderingContext2D, r: Overlay & { kind: 'eyes' }, s: number, time: number, dt: number): void {
     const st = r.state;
     if (!st.visible || !st.eyes) return;
     st.next = (st.next ?? 1 + Math.random() * 3) - dt;
@@ -176,7 +201,7 @@ export class Animator {
     }
   }
 
-  drawGlow(ctx, r, s, time, inView) {
+  drawGlow(ctx: CanvasRenderingContext2D, r: Overlay & { kind: 'glow' }, s: number, time: number, inView: InView): void {
     const x = r.x * W, y = r.y * H, rad = r.r * W;
     if (!inView(x, y, rad * 3) || rad * s < 1) return;
     const [cr, cg, cb] = hexRgb(r.color || '#ffb060');
@@ -189,7 +214,7 @@ export class Animator {
     ctx.restore();
   }
 
-  drawSplash(ctx, r, s, dt, inView, splash) {
+  drawSplash(ctx: CanvasRenderingContext2D, r: Overlay & { kind: 'splash' }, s: number, dt: number, inView: InView, splash?: (x: number, y: number, r: number) => void): void {
     const st = r.state;
     st.drops = st.drops || [];
     st.next = (st.next ?? Math.random() * 2) - dt;

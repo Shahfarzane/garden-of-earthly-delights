@@ -34,7 +34,7 @@ uniform vec2 u_ringIn;     // pool inside the cavalcade: rx, ry
 uniform vec3 u_deep[48];   // story-point hotspots painted from the full-resolution scan (real cracks)
 uniform float u_deepOn;    // 1 when the view is at a level that shows those deep strokes
 uniform float u_hideWings; // 1 while the shutters are closed: the wings are not on the board
-// Animated figures (src/living/rigs.js): up to 16 active rigs, motion evaluated on the CPU.
+// Animated figures (src/living/rigs.ts): up to 16 active rigs, motion evaluated on the CPU.
 uniform vec4 u_rigA[16];   // region centre x, y, radii rx, ry (world px)
 uniform vec4 u_rigB[16];   // cos, sin of region angle, feather, kind (1 rotate, 2 translate, 3 scale)
 uniform vec4 u_rigC[16];   // pivot x, y, motion a, b (rotate: radians; translate: dx, dy world px; scale: factor)

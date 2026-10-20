@@ -20,7 +20,30 @@
 // trigger: 'always' or 'near' (only while the pointer is within the region).
 // priority: 1 is the showcase set (10 rigs), 2 is worth having, 3 is a small extra.
 
-export const RIGS = [
+import type { PanelId } from '../scene.ts';
+
+export type Wave = 'sine' | 'gallop' | 'saw' | 'pulse';
+// An ellipse in normalized triptych units, angle in degrees.
+export interface Region { x: number; y: number; rx: number; ry: number; angle?: number }
+interface RigBase { id: string; title: string; panel: PanelId; priority: 1 | 2 | 3 }
+interface Displacement {
+  region: Region; feather?: number; pivot?: { x: number; y: number };
+  period?: number; phase?: number; wave?: Wave; trigger?: 'always' | 'near';
+}
+export interface TurnRig extends RigBase, Displacement { kind: 'rotate' | 'scale'; amount: number }
+export interface ShiftRig extends RigBase, Displacement { kind: 'translate'; amount: { dx?: number; dy?: number } }
+export interface EyesRig extends RigBase {
+  kind: 'eyes'; eyes: { x: number; y: number; r: number }[]; pupil: number;
+  sclera?: string; pupilColor?: string; lid?: string; follow?: 'pointer'; blink: [number, number] | null; glow?: boolean; attach?: string;
+}
+export interface SplashRig extends RigBase { kind: 'splash'; points: { x: number; y: number }[]; every?: [number, number]; size?: number }
+export interface GlowRig extends RigBase { kind: 'glow'; x: number; y: number; r: number; color?: string; flicker?: number }
+// Warps move the painted image in the post shader; overlays are drawn on the living layer.
+export type WarpRig = TurnRig | ShiftRig;
+export type OverlayRig = EyesRig | SplashRig | GlowRig;
+export type Rig = WarpRig | OverlayRig;
+
+export const RIGS: Rig[] = [
   // ---------------------------------------------------------------- Eden
   { id: 'eden-elephant-ear', title: 'The elephant flaps its ear', panel: 'eden', priority: 2,
     kind: 'rotate', region: { x: 0.0884, y: 0.2961, rx: 0.0042, ry: 0.0123, angle: -10 }, feather: 0.35,

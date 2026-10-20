@@ -5,9 +5,9 @@ import { Post } from './engine/post.ts';
 import { UI } from './ui/ui.js';
 import { Shutters } from './ui/shutters.js';
 import { Soundscape } from './audio/soundscape.ts';
-import { LifeLayer } from './living/layer.js';
-import { Animator } from './living/animator.js';
-import { RIGS } from './living/rigs.js';
+import { LifeLayer } from './living/layer.ts';
+import { Animator } from './living/animator.ts';
+import { RIGS } from './living/rigs.ts';
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const canvas = document.getElementById('paint');

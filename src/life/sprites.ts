@@ -11,10 +11,24 @@
 // Style target: Bosch. Small, precise, slightly naive medieval rendering with a
 // fine dark outline and soft modelling.
 
+// Drawing options, all optional. Which ones a sprite reads is in its function.
+export interface SpriteOptions {
+  px?: number; // screen px per body length: the level of detail
+  pxPerUnit?: number; // drawItem: screen px per unit, when px is not given
+  palette?: string; phase?: number; pose?: string;
+  glide?: number | null; flap?: number | null; // flying birds and butterflies
+  dip?: number; reflection?: boolean; // water birds
+  rest?: number; hop?: number; wag?: number; bend?: number; // insects, frog, fish
+  heat?: number; trail?: boolean; age?: number; life?: number; // embers, smoke
+  width?: number; color?: string; blend?: GlobalCompositeOperation; dust?: number; // light, flame
+  speed?: number; // droplets
+}
+export type SpriteDraw = (ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions) => void;
+
 const TAU = Math.PI * 2;
-const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
-const lerp = (a, b, t) => a + (b - a) * t;
-const smooth = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
+const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const smooth = (a: number, b: number, x: number) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
 
 /** Bosch's fine dark line. */
 export const INK = 'rgba(36,22,10,0.92)';
@@ -27,17 +41,17 @@ const INK_SOFT = 'rgba(36,22,10,0.55)';
  * 2: < 40 px  outlines, eyes, beaks
  * 3: >= 40 px full detail: gradients, feathers, highlights
  */
-export function lodOf(o) {
+export function lodOf(o: SpriteOptions): number {
   const px = o && o.px != null ? o.px : 60;
   return px < 6 ? 0 : px < 18 ? 1 : px < 40 ? 2 : 3;
 }
 
-function lineW(o, mul = 1) {
+function lineW(o: SpriteOptions, mul = 1): number {
   const px = (o && o.px) || 60;
   return clamp(1.05 / px, 0.004, 0.09) * mul;
 }
 
-function ink(ctx, o, mul = 1, soft = false) {
+function ink(ctx: CanvasRenderingContext2D, o: SpriteOptions, mul = 1, soft = false): void {
   ctx.lineWidth = lineW(o, mul);
   ctx.strokeStyle = soft ? INK_SOFT : INK;
   ctx.lineJoin = 'round';
@@ -46,22 +60,23 @@ function ink(ctx, o, mul = 1, soft = false) {
 
 // Gradients are defined in local units, so one gradient object per (ctx, key)
 // can be reused across every instance: the CTM maps it at fill time.
-const gradCache = new WeakMap();
-function gradFor(ctx, key, make) {
+type Stops = [offset: number, color: string][];
+const gradCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>();
+function gradFor(ctx: CanvasRenderingContext2D, key: string, make: (c: CanvasRenderingContext2D) => CanvasGradient): CanvasGradient {
   let m = gradCache.get(ctx);
   if (!m) { m = new Map(); gradCache.set(ctx, m); }
   let g = m.get(key);
   if (!g) { g = make(ctx); m.set(key, g); }
   return g;
 }
-function radial(ctx, key, x0, y0, r0, x1, y1, r1, stops) {
+function radial(ctx: CanvasRenderingContext2D, key: string, x0: number, y0: number, r0: number, x1: number, y1: number, r1: number, stops: Stops): CanvasGradient {
   return gradFor(ctx, key, (c) => {
     const g = c.createRadialGradient(x0, y0, r0, x1, y1, r1);
     for (const [p, col] of stops) g.addColorStop(p, col);
     return g;
   });
 }
-function linear(ctx, key, x0, y0, x1, y1, stops) {
+function linear(ctx: CanvasRenderingContext2D, key: string, x0: number, y0: number, x1: number, y1: number, stops: Stops): CanvasGradient {
   return gradFor(ctx, key, (c) => {
     const g = c.createLinearGradient(x0, y0, x1, y1);
     for (const [p, col] of stops) g.addColorStop(p, col);
@@ -70,18 +85,18 @@ function linear(ctx, key, x0, y0, x1, y1, stops) {
 }
 
 /** Soft modelled fill: light at the upper front, base colour, shadow at the rim. */
-function shade(ctx, lod, key, cx, cy, r, light, base, dark) {
+function shade(ctx: CanvasRenderingContext2D, lod: number, key: string, cx: number, cy: number, r: number, light: string, base: string, dark: string): string | CanvasGradient {
   if (lod < 3) return base;
   return radial(ctx, key, cx - r * 0.25, cy - r * 0.35, r * 0.05, cx, cy, r * 1.15,
     [[0, light], [0.55, base], [1, dark]]);
 }
 
-function ellipse(ctx, cx, cy, rx, ry, rot = 0) {
+function ellipse(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number, rot = 0): void {
   ctx.beginPath();
   ctx.ellipse(cx, cy, rx, ry, rot, 0, TAU);
 }
 
-function eye(ctx, lod, x, y, r, ring = null) {
+function eye(ctx: CanvasRenderingContext2D, lod: number, x: number, y: number, r: number, ring: string | null = null): void {
   if (lod < 2) return;
   if (ring) { ctx.fillStyle = ring; ellipse(ctx, x, y, r * 1.6, r * 1.6); ctx.fill(); }
   ctx.fillStyle = '#120c08';
@@ -95,7 +110,7 @@ function eye(ctx, lod, x, y, r, ring = null) {
 }
 
 /** Flap state for flying birds: up in [-1,1] (1 = wings raised), glide in [0,1]. */
-function flapState(t, o, freq, glideDuty) {
+function flapState(t: number, o: SpriteOptions, freq: number, glideDuty: number): { up: number; glide: number } {
   const ph = o.phase || 0;
   let glide = o.glide;
   if (glide == null) {
@@ -116,7 +131,14 @@ function flapState(t, o, freq, glideDuty) {
  * P: { top, belly, head, beak, wingTip?, tailFork, span, shape: 'swept'|'pointed'|'broad',
  *      freq, glideDuty, fingers?, tailLen, bodyR }
  */
-function flyingBird(ctx, t, o, P) {
+interface FlyPalette {
+  key: string; top: string; belly: string; bellyBase?: string; head: string; throat?: string;
+  beak: string; beakLen: number; span: number; shape: 'swept' | 'pointed' | 'broad'; freq: number; glideDuty: number;
+  tailFork: number; tailLen: number; bodyR: number; fingers?: number; wingLight?: string; rim?: string; wingBar?: string;
+  tail?: string; // the tail's colour, the top's when absent
+}
+
+function flyingBird(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions, P: FlyPalette): void {
   const lod = lodOf(o);
   const { up, glide } = flapState(t, o, P.freq, P.glideDuty);
   // projected span shrinks as wings leave the horizontal
@@ -131,8 +153,8 @@ function flyingBird(ctx, t, o, P) {
   // Silhouette: body + wings + tail in one path (lod 0 only path)
   // chord shrinks toward the shoulder as the wings rise (seen edge-on)
   const cx = 0.55 + 0.45 * k;
-  const X = (x) => 0.0 + (x - 0.0) * cx;
-  const wing = (s) => {
+  const X = (x: number) => 0.0 + (x - 0.0) * cx;
+  const wing = (s: number) => {
     const ty = s * span * k;
     const sweep = P.shape === 'swept' ? -0.12 : P.shape === 'broad' ? 0.02 : -0.04;
     const tx = sweep - 0.08 * (1 - k); // tips drift back when folded
@@ -241,7 +263,17 @@ function flyingBird(ctx, t, o, P) {
  * P: { body, bodyLight, bodyDark, belly, wing, wingDark, head, crown?, cheek?, face?,
  *      beak, beakLen, beakThin?, legs, tail, tailLen, crest?, wingBars?, detail? }
  */
-function perchedBird(ctx, t, o, P) {
+interface WingBar { x0: number; y0: number; x1: number; y1: number; w: number; color: string }
+interface PerchPalette {
+  key: string; body: string; bodyLight: string; bodyDark: string; belly: string; wing: string; wingDark: string;
+  head: string; headLight?: string; headDark?: string; crown?: string; face?: string | null; cheek?: string;
+  beak: string; beakLen: number; beakThin?: boolean; beakCurve?: boolean; legs: string; tail: string; tailLen: number;
+  tailBar?: string; eyeRing?: string | null; eyeStripe?: string; tilt?: number; crest?: { color: string; tip: string; open?: number };
+  wingBars?: WingBar[];
+  detail?(ctx: CanvasRenderingContext2D, lod: number, hx: number, hy: number): void;
+}
+
+function perchedBird(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions, P: PerchPalette): void {
   const lod = lodOf(o);
   const ph = o.phase || 0;
   const tilt = P.tilt != null ? P.tilt : -0.3;
@@ -418,9 +450,9 @@ const FLY = {
   songbirdFly: { key: 'songbirdFly', top: '#5b4a33', belly: '#d9cdb2', head: '#5b4a33', beak: '#4a3a22', beakLen: 0.05, span: 0.48, shape: 'pointed', freq: 9, glideDuty: 0.3, tailFork: 0.03, tailLen: 0.22, bodyR: 0.1 },
   kingfisherFly: { key: 'kingfisherFly', top: '#1f7e95', belly: '#c6702d', head: '#1d6f85', beak: '#1c1a18', beakLen: 0.28, span: 0.5, shape: 'pointed', freq: 10, glideDuty: 0.2, tailFork: 0.0, tailLen: 0.12, bodyR: 0.1, wingLight: '#3fa7c0' },
   hoopoeFly: { key: 'hoopoeFly', top: '#1e1a16', belly: '#d6ad83', head: '#cfa070', beak: '#2a2420', beakLen: 0.25, span: 0.6, shape: 'broad', freq: 5, glideDuty: 0.2, tailFork: 0.0, tailLen: 0.22, bodyR: 0.1, wingBar: '#f0e6d4', fingers: 4 },
-};
+} satisfies Record<string, FlyPalette>;
 
-const SONGBIRD_PALETTES = {
+const SONGBIRD_PALETTES: Record<string, PerchPalette> = {
   green: { key: 'sb-green', body: '#7c8a3a', bodyLight: '#aab85a', bodyDark: '#4e5a24', belly: '#cdd09a', wing: '#6c7a34', wingDark: '#3f4a1e', head: '#7f8c3e', crown: '#b83224', face: null, beak: '#5a4a32', beakLen: 0.16, legs: '#6a6a5a', tail: '#4e5a24', tailLen: 0.3, eyeRing: '#f0ecd8' },
   blue: { key: 'sb-blue', body: '#4f6f9e', bodyLight: '#8aa8cf', bodyDark: '#2f4a72', belly: '#e9d98a', wing: '#3f5e8e', wingDark: '#24395a', head: '#f1ecd9', crown: '#4f6f9e', beak: '#2a2420', beakLen: 0.06, legs: '#555b68', tail: '#3f5e8e', tailLen: 0.26, eyeStripe: '#1d2238', wingBars: [{ x0: 0.02, y0: -0.07, x1: -0.14, y1: -0.01, w: 0.03, color: '#f1ecd9' }] },
   brown: { key: 'sb-brown', body: '#8e6c47', bodyLight: '#b8956a', bodyDark: '#5a4027', belly: '#d8cdb6', wing: '#6a4a2c', wingDark: '#3d2a18', head: '#7f6248', cheek: '#dcd2bd', crown: '#5b4028', beak: '#4a3a22', beakLen: 0.07, legs: '#8a7b63', tail: '#4e361f', tailLen: 0.3, wingBars: [{ x0: 0.0, y0: -0.06, x1: -0.16, y1: 0.0, w: 0.025, color: '#e4dac5' }] },
@@ -433,7 +465,7 @@ const SONGBIRD_PALETTES = {
 // Water birds
 // ---------------------------------------------------------------------------
 
-function swan(ctx, t, o) {
+function swan(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
   const ph = o.phase || 0;
   const bob = Math.sin(t * 1.4 + ph) * 0.012;
@@ -529,9 +561,9 @@ const DUCK_PALETTES = {
   dark: { key: 'duck-d', body: '#221d19', bodyLight: '#3f3630', bodyDark: '#100d0b', chest: '#221d19', head: '#221d19', headLight: '#3f3630', headDark: '#100d0b', ring: null, bill: '#c9c0a8', tail: '#100d0b', speculum: null, legs: '#5a4a3a' },
 };
 
-function duck(ctx, t, o) {
+function duck(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
-  const P = DUCK_PALETTES[o.palette] || DUCK_PALETTES.mallard;
+  const P = DUCK_PALETTES[o.palette as keyof typeof DUCK_PALETTES] || DUCK_PALETTES.mallard;
   const ph = o.phase || 0;
   const bob = Math.sin(t * 1.8 + ph) * 0.012;
   const dab = o.dip != null ? o.dip : smooth(0.9, 1, Math.sin(t * 0.5 + ph * 1.3)); // dabbling head dip
@@ -599,9 +631,9 @@ const HERON_PALETTES = {
   grey: { key: 'heron-g', body: '#9ea4a8', light: '#d0d4d6', dark: '#5f6569', beak: '#d9b24a', legs: '#4a4a44', plume: '#2a2622' },
 };
 
-function heron(ctx, t, o) {
+function heron(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
-  const P = HERON_PALETTES[o.palette] || HERON_PALETTES.white;
+  const P = HERON_PALETTES[o.palette as keyof typeof HERON_PALETTES] || HERON_PALETTES.white;
   const ph = o.phase || 0;
   // occasional head dip to the water, otherwise a slow alert turn
   const dip = o.dip != null ? o.dip : smooth(0.82, 0.97, Math.sin(t * 0.3 + ph)) * (1 - smooth(0.97, 1.0, Math.sin(t * 0.3 + ph)));
@@ -662,29 +694,30 @@ function heron(ctx, t, o) {
 // Insects, frog, fish
 // ---------------------------------------------------------------------------
 
-const BUTTERFLY_PALETTES = {
+interface ButterflyPalette { key: string; wing: string; light: string; edge: string; spots: string; hind: string; blueDots?: string }
+const BUTTERFLY_PALETTES: Record<string, ButterflyPalette> = {
   white: { key: 'bf-white', wing: '#efe9d8', light: '#fbf8ee', edge: '#2a2420', spots: '#2a2420', hind: '#e5dcc4' },
   orange: { key: 'bf-orange', wing: '#d2772a', light: '#eea24c', edge: '#2a1c12', spots: '#2a1c12', hind: '#b8601f', blueDots: '#6f8fc4' },
   blue: { key: 'bf-blue', wing: '#6d84c2', light: '#9ab2e0', edge: '#2a2a38', spots: '#f1ecd9', hind: '#5c72ad' },
   yellow: { key: 'bf-yellow', wing: '#d9c74a', light: '#f0e27a', edge: '#4a3a1a', spots: '#b8562a', hind: '#cdb93f' },
 };
 
-function butterfly(ctx, t, o) {
+function butterfly(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
-  const P = BUTTERFLY_PALETTES[o.palette] || BUTTERFLY_PALETTES.white;
+  const P = BUTTERFLY_PALETTES[o.palette as keyof typeof BUTTERFLY_PALETTES] || BUTTERFLY_PALETTES.white;
   const ph = o.phase || 0;
   const freq = o.rest ? 0.4 : 9;
   const w = o.flap != null ? o.flap : Math.cos(TAU * freq * t + ph);
   const k = o.rest ? 0.15 + 0.1 * (0.5 + 0.5 * w) : 0.22 + 0.78 * Math.abs(w);
   ctx.save();
   ctx.scale(1, k);
-  const fore = (s) => {
+  const fore = (s: number) => {
     ctx.moveTo(0.05, s * 0.04);
     ctx.bezierCurveTo(0.2, s * 0.15, 0.4, s * 0.4, 0.26, s * 0.52);
     ctx.bezierCurveTo(0.12, s * 0.56, -0.05, s * 0.35, -0.06, s * 0.08);
     ctx.closePath();
   };
-  const hind = (s) => {
+  const hind = (s: number) => {
     ctx.moveTo(-0.05, s * 0.05);
     ctx.bezierCurveTo(-0.12, s * 0.3, -0.3, s * 0.45, -0.38, s * 0.3);
     ctx.bezierCurveTo(-0.42, s * 0.15, -0.3, s * 0.06, -0.14, s * 0.03);
@@ -750,12 +783,12 @@ const DRAGONFLY_PALETTES = {
   red: { key: 'df-red', body: '#c24d2c', light: '#ea8a62', dark: '#6a2412', bands: '#2a1410', eye: '#8a2a1a' },
 };
 
-function dragonfly(ctx, t, o) {
+function dragonfly(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
-  const P = DRAGONFLY_PALETTES[o.palette] || DRAGONFLY_PALETTES.blue;
+  const P = DRAGONFLY_PALETTES[o.palette as keyof typeof DRAGONFLY_PALETTES] || DRAGONFLY_PALETTES.blue;
   const ph = o.phase || 0;
   const rest = !!o.rest;
-  const wingPair = (ang, alpha) => {
+  const wingPair = (ang: number, alpha: number) => {
     ctx.save();
     ctx.globalAlpha *= alpha;
     for (const s of [1, -1]) {
@@ -811,7 +844,7 @@ function dragonfly(ctx, t, o) {
   if (lod >= 3) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; ellipse(ctx, 0.3, -0.03, 0.015, 0.012); ctx.fill(); ellipse(ctx, 0.3, 0.03, 0.015, 0.012); ctx.fill(); }
 }
 
-function frog(ctx, t, o) {
+function frog(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
   const ph = o.phase || 0;
   const hop = o.hop != null ? o.hop : 0;      // 0 sitting, 1 legs stretched mid-leap
@@ -882,16 +915,16 @@ const FISH_PALETTES = {
   dark: { key: 'fish-d', back: '#2a2f33', mid: '#4f585e', belly: '#8b9398', fin: '#5a3a2e', finDark: '#2a1a14' },
 };
 
-function fish(ctx, t, o) {
+function fish(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
-  const P = FISH_PALETTES[o.palette] || FISH_PALETTES.silver;
+  const P = FISH_PALETTES[o.palette as keyof typeof FISH_PALETTES] || FISH_PALETTES.silver;
   const ph = o.phase || 0;
   const wag = (o.wag != null ? o.wag : 1) * Math.sin(TAU * 3 * t + ph) * 0.22;
   const bend = (o.bend || 0) * 0.6 + wag;
   // spine: y(x) bends toward the tail
-  const sy = (x) => (x < 0 ? bend * x * x * 0.9 : 0) - 0.0;
-  const top = (x) => sy(x) - h(x), bot = (x) => sy(x) + h(x);
-  const h = (x) => 0.14 * Math.sqrt(Math.max(0, 1 - ((x - 0.02) / 0.5) ** 2)) * (x < -0.35 ? Math.max(0.25, (x + 0.5) / 0.15) : 1);
+  const sy = (x: number) => (x < 0 ? bend * x * x * 0.9 : 0) - 0.0;
+  const top = (x: number) => sy(x) - h(x), bot = (x: number) => sy(x) + h(x);
+  const h = (x: number) => 0.14 * Math.sqrt(Math.max(0, 1 - ((x - 0.02) / 0.5) ** 2)) * (x < -0.35 ? Math.max(0.25, (x + 0.5) / 0.15) : 1);
   const step = lod >= 2 ? 0.06 : 0.14;
   const body = () => {
     ctx.beginPath();
@@ -975,7 +1008,7 @@ function fish(ctx, t, o) {
 // Hell
 // ---------------------------------------------------------------------------
 
-function bat(ctx, t, o) {
+function bat(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
   const ph = o.phase || 0;
   const freq = 4.5;
@@ -987,7 +1020,7 @@ function bat(ctx, t, o) {
   const memb = lod >= 3 ? radial(ctx, 'bat-memb', 0, 0, 0.1, 0, 0, 0.7, [[0, '#4a2c20'], [0.6, '#2e1b14'], [1, '#17100c']]) : '#2a1a14';
   ctx.save();
   ctx.translate(0, bob);
-  const wing = (s) => {
+  const wing = (s: number) => {
     const ty = s * span * k;
     const wx = 0.22, wy = s * span * 0.45 * k; // wrist
     ctx.moveTo(0.12, s * 0.07);
@@ -1052,7 +1085,7 @@ function bat(ctx, t, o) {
   ctx.restore();
 }
 
-function ember(ctx, t, o) {
+function ember(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
   const ph = o.phase || 0;
   const flick = 0.72 + 0.28 * Math.sin(TAU * 11 * t + ph) * Math.sin(TAU * 3.7 * t + ph * 2);
@@ -1077,7 +1110,7 @@ function ember(ctx, t, o) {
   ctx.restore();
 }
 
-function smoke(ctx, t, o) {
+function smoke(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
   const ph = (o.phase || 0) * 7;
   // age 0..1: grows and fades (caller passes o.age, or it is derived from t over o.life)
@@ -1104,7 +1137,7 @@ function smoke(ctx, t, o) {
   ctx.restore();
 }
 
-function ash(ctx, t, o) {
+function ash(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
   const ph = o.phase || 0;
   ctx.save();
@@ -1126,7 +1159,7 @@ function ash(ctx, t, o) {
  * Shaft of light from the origin along +x, length 1. Options: width (at the far end,
  * default 0.35), color, dust (count of motes inside, default 14 at lod>=2).
  */
-function lightBeam(ctx, t, o) {
+function lightBeam(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
   const ph = o.phase || 0;
   const W = o.width || 0.35;
@@ -1169,7 +1202,7 @@ function lightBeam(ctx, t, o) {
   ctx.restore();
 }
 
-function flame(ctx, t, o) {
+function flame(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
   const ph = o.phase || 0;
   // flame rises toward -y; body length 1 = flame height. Facing +x is irrelevant; draw upright.
@@ -1178,7 +1211,7 @@ function flame(ctx, t, o) {
   const hgt = 0.92 + n2 * 0.08 + n1 * 0.04;
   ctx.save();
   ctx.translate(0, 0.5);
-  const tongue = (w, h, lx) => {
+  const tongue = (w: number, h: number, lx: number) => {
     ctx.beginPath();
     ctx.moveTo(-w, 0);
     ctx.quadraticCurveTo(-w * 1.1, -h * 0.45, lx, -h);
@@ -1198,7 +1231,7 @@ function flame(ctx, t, o) {
   ctx.restore();
 }
 
-function mote(ctx, t, o) {
+function mote(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
   const ph = (o.phase || 0) * 3.1;
   const glint = 0.35 + 0.65 * Math.pow(0.5 + 0.5 * Math.sin(TAU * 0.9 * t + ph), 3);
@@ -1219,7 +1252,7 @@ function mote(ctx, t, o) {
   ctx.restore();
 }
 
-function droplet(ctx, t, o) {
+function droplet(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
   // teardrop, tail toward -x (caller orients +x along velocity)
   ctx.save();
@@ -1236,7 +1269,7 @@ function droplet(ctx, t, o) {
   ctx.restore();
 }
 
-function bubble(ctx, t, o) {
+function bubble(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
   const lod = lodOf(o);
   const ph = o.phase || 0;
   const wob = 1 + 0.06 * Math.sin(TAU * 2.3 * t + ph);
@@ -1256,12 +1289,12 @@ function bubble(ctx, t, o) {
 // Bird wrappers (perched by default, o.pose = 'fly' for flight)
 // ---------------------------------------------------------------------------
 
-const GOLDFINCH = {
+const GOLDFINCH: PerchPalette = {
   key: 'goldfinch', body: '#a9865a', bodyLight: '#cfae82', bodyDark: '#6d5438', belly: '#eadfc7', wing: '#211c18', wingDark: '#0f0c0a', head: '#eadfc7', crown: '#211c18', face: '#b8321f',
   beak: '#e3d6bb', beakLen: 0.09, legs: '#c9a08a', tail: '#211c18', tailLen: 0.28, tailBar: '#eadfc7',
   wingBars: [{ x0: 0.0, y0: -0.07, x1: -0.2, y1: 0.02, w: 0.05, color: '#e9c43a' }],
 };
-const KINGFISHER = {
+const KINGFISHER: PerchPalette = {
   key: 'kingfisher', body: '#c7702e', bodyLight: '#e9a062', bodyDark: '#8a4a1c', belly: '#c7702e', wing: '#2a7f9e', wingDark: '#154a60', head: '#1f6f86', headLight: '#3e9bb4', headDark: '#123e4d',
   eyeStripe: '#c7702e', beak: '#1c1a18', beakLen: 0.32, beakThin: true, legs: '#c0392b', tail: '#2a7f9e', tailLen: 0.14, tilt: -0.45, eyeRing: null,
   wingBars: [{ x0: 0.09, y0: -0.16, x1: -0.28, y1: 0.02, w: 0.035, color: '#5ad0e8' }],
@@ -1273,7 +1306,7 @@ const KINGFISHER = {
     if (lod >= 3) { ctx.fillStyle = 'rgba(150,230,240,0.8)'; for (let i = 0; i < 6; i++) { ellipse(ctx, hx - 0.06 + i * 0.03, hy - 0.08 + (i % 2) * 0.025, 0.012, 0.008); ctx.fill(); } }
   },
 };
-const HOOPOE = {
+const HOOPOE: PerchPalette = {
   key: 'hoopoe', body: '#cfa678', bodyLight: '#ead0ab', bodyDark: '#8f6c46', belly: '#e4d2b7', wing: '#1e1a16', wingDark: '#0f0c0a', head: '#cfa678', headLight: '#ead0ab', headDark: '#8f6c46',
   beak: '#2a2420', beakLen: 0.34, beakThin: true, beakCurve: true, legs: '#6a6a5a', tail: '#1e1a16', tailLen: 0.3, tailBar: '#f0e6d4',
   crest: { color: '#cfa678', tip: '#1e1a16' },
@@ -1283,12 +1316,12 @@ const HOOPOE = {
   ],
 };
 
-function perchOrFly(perched, flyP) {
+function perchOrFly(perched: PerchPalette, flyP: FlyPalette): SpriteDraw {
   return (ctx, t, o) => (o.pose === 'fly' ? flyingBird(ctx, t, o, flyP) : perchedBird(ctx, t, o, perched));
 }
 
-function songbird(ctx, t, o) {
-  const P = SONGBIRD_PALETTES[o.palette] || SONGBIRD_PALETTES.brown;
+function songbird(ctx: CanvasRenderingContext2D, t: number, o: SpriteOptions): void {
+  const P = SONGBIRD_PALETTES[o.palette as keyof typeof SONGBIRD_PALETTES] || SONGBIRD_PALETTES.brown;
   if (o.pose === 'fly') return flyingBird(ctx, t, o, { ...FLY.songbirdFly, key: 'sbf-' + P.key, top: P.wing, belly: P.belly, head: P.head });
   return perchedBird(ctx, t, o, P);
 }
@@ -1298,6 +1331,7 @@ function songbird(ctx, t, o) {
 // ---------------------------------------------------------------------------
 
 /** name -> { draw, tags: ['eden'|'garden'|'hell'|'all'], bg: 'meadow'|'water'|'night'|'sky', palettes?, poses? } */
+interface SpriteDef { draw: SpriteDraw; tags: string[]; bg: string; kind: string; palettes?: string[]; poses?: string[] }
 export const sprites = {
   // Eden
   blackbird: { draw: (c, t, o) => flyingBird(c, t, o, FLY.blackbird), tags: ['eden'], bg: 'sky', kind: 'flyer' },
@@ -1326,16 +1360,17 @@ export const sprites = {
   flame: { draw: flame, tags: ['hell'], bg: 'night', kind: 'particle' },
   // Everywhere
   mote: { draw: mote, tags: ['all'], bg: 'meadow', kind: 'particle', palettes: ['warm', 'cool', 'plain'] },
-};
+} satisfies Record<string, SpriteDef>;
 
-export const spriteNames = Object.keys(sprites);
+export type SpriteName = keyof typeof sprites;
+export const spriteNames = Object.keys(sprites) as SpriteName[];
 
 /**
  * Draw sprite `name` at the current transform.
  * Styles (fillStyle, strokeStyle, lineWidth, globalAlpha) are left modified; wrap in
  * save/restore if that matters to the caller.
  */
-export function drawSprite(ctx, name, t, o = {}) {
+export function drawSprite(ctx: CanvasRenderingContext2D, name: SpriteName, t: number, o: SpriteOptions = {}): void {
   const s = sprites[name];
   if (!s) throw new Error('unknown sprite: ' + name);
   s.draw(ctx, t, o);
@@ -1345,7 +1380,9 @@ export function drawSprite(ctx, name, t, o = {}) {
  * Convenience: draw a motion item ({x, y, angle, scale, t, alpha}) with a sprite at
  * `bodyPx` screen pixels per unit scale, in the caller's current coordinate space.
  */
-export function drawItem(ctx, name, item, size, o = {}) {
+// What drawItem places: a motion item, or any object with a position and an alpha.
+export interface Placed { x: number; y: number; alpha: number; angle?: number; scale?: number; t?: number; phase?: number; flipX?: boolean; flipY?: boolean }
+export function drawItem(ctx: CanvasRenderingContext2D, name: SpriteName, item: Placed, size: number, o: SpriteOptions = {}): void {
   if (item.alpha <= 0) return;
   ctx.save();
   ctx.translate(item.x, item.y);

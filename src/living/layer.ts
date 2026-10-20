@@ -1,16 +1,35 @@
 // The living layer: creatures, water and fire particles drawn over the painting with
 // Canvas2D, placed where Bosch put them. Positions are normalized triptych coordinates
 // read off gridded crops of the painting.
-import { drawItem } from '../life/sprites.js';
-import { flock, swimPath, wander, particles, leap } from '../life/motion.js';
+import { drawItem } from '../life/sprites.ts';
+import { flock, swimPath, wander, particles, leap } from '../life/motion.ts';
 import { WORLD_W as W, WORLD_H as H } from '../world.ts';
+import type { Vec2 } from '../world.ts';
+import type { Camera } from '../engine/camera.ts';
+import type { SpriteName, SpriteOptions } from '../life/sprites.ts';
+import type { Box, Group, Point, Polygon } from '../life/motion.ts';
+import type { Animator, InView } from './animator.ts';
+import type { Scene } from '../scene.ts';
 
-const P = (x, y) => ({ x: x * W, y: y * H });
-const box = (x0, y0, x1, y1) => ({ x: x0 * W, y: y0 * H, w: (x1 - x0) * W, h: (y1 - y0) * H });
-const poly = (pts) => pts.map(([x, y]) => [x * W, y * H]);
+// A behaviour drawn with one sprite. layer orders the passes (0 back, 3 front, 1 default);
+// landing hides drops below it; near and skip pace updates away from the view.
+interface LifeGroup {
+  group: Group; sprite: SpriteName; size: number;
+  layer?: number; opts?: SpriteOptions; blend?: GlobalCompositeOperation;
+  landing?: Point; rate?: number; splash?: boolean;
+  near?: boolean; skip?: number;
+}
+interface Beam { from: Point; angle: number; len: number; width: number; sway: number; speed: number }
+interface Glass { c: Point; rx: number; ry: number; period: number; dome?: boolean }
+interface Stir { poly: Polygon; every: number; r: number; next: number }
+interface Ring { x: number; y: number; r: number; t: number }
+
+const P = (x: number, y: number): Point => ({ x: x * W, y: y * H });
+const box = (x0: number, y0: number, x1: number, y1: number): Box => ({ x: x0 * W, y: y0 * H, w: (x1 - x0) * W, h: (y1 - y0) * H });
+const poly = (pts: Polygon): Polygon => pts.map(([x, y]) => [x * W, y * H]);
 
 // A falling stream of drops from a spout to a landing point (parabola under gravity).
-function stream(from, to, { rate = 12, g = 10000, seed = 1, size = 70 } = {}) {
+function stream(from: Point, to: Point, { rate = 12, g = 10000, seed = 1, size = 70 } = {}): LifeGroup {
   const dy = to.y - from.y;
   const T = Math.sqrt((2 * dy) / g);
   const vx = (to.x - from.x) / T;
@@ -23,27 +42,41 @@ function stream(from, to, { rate = 12, g = 10000, seed = 1, size = 70 } = {}) {
 }
 
 export class LifeLayer {
-  constructor(canvas, camera, scene) {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  camera: Camera;
+  enabled: boolean;
+  rings: Ring[];
+  groups: LifeGroup[];
+  beams!: Beam[]; // these three are set by build()
+  glass!: Glass[];
+  stirs!: Stir[];
+  dpr!: number; // set by resize() before each frame draws
+  clip?: string;
+  animator?: Animator; // set by main.ts
+  pointer?: Vec2 | null; // world px, while the pointer is over the painting
+
+  constructor(canvas: HTMLCanvasElement, camera: Camera, scene: Scene) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+    this.ctx = canvas.getContext('2d')!;
     this.camera = camera;
     this.enabled = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.rings = []; // splash rings on water
     this.groups = this.build();
   }
 
-  build() {
-    const G = [];
-    const add = (group, sprite, size, extra = {}) => { G.push({ group, sprite, size, ...extra }); return group; };
+  build(): LifeGroup[] {
+    const G: LifeGroup[] = [];
+    const add = (group: Group, sprite: SpriteName, size: number, extra: Partial<LifeGroup> = {}) => { G.push({ group, sprite, size, ...extra }); return group; };
 
     // ---------------- Eden ----------------
     // the flock that pours out of the rock and circles the sky
     add(flock({ count: 24, bounds: box(0.012, 0.025, 0.135, 0.2), home: P(0.058, 0.145), seed: 11, speed: 2100, tour: 16, stagger: 0.3, rest: 4 }), 'blackbird', 330, { layer: 1 });
     // the Fountain of Life: four thin jets from the discs into the pond (fountain2.jpg)
-    for (const [i, [a, b]] of [
+    for (const [i, [a, b]] of ([
       [[0.1098, 0.309], [0.0960, 0.463]], [[0.1304, 0.308], [0.1440, 0.462]],
       [[0.1059, 0.364], [0.0932, 0.463]], [[0.1372, 0.364], [0.1483, 0.463]],
-    ].entries()) {
+    ] satisfies [Vec2, Vec2][]).entries()) {
       const s = stream(P(...a), P(...b), { seed: 30 + i, rate: 10 });
       G.push({ ...s, layer: 2, splash: true });
     }
@@ -78,7 +111,7 @@ export class LifeLayer {
     add(wander({ center: P(0.35, 0.86), radius: 6500, speed: 900, count: 3, seed: 24, jitter: 3, settle: 3 }), 'butterfly', 170, { layer: 2 });
     add(wander({ center: P(0.68, 0.82), radius: 5000, speed: 900, count: 2, seed: 25, jitter: 3, settle: 3 }), 'butterfly', 170, { layer: 2 });
     // the Fountain of Adultery: two jets from the tower into the lake
-    for (const [i, [a, b]] of [[[0.4778, 0.2081], [0.4755, 0.2434]], [[0.5333, 0.2111], [0.5355, 0.2443]]].entries()) {
+    for (const [i, [a, b]] of ([[[0.4778, 0.2081], [0.4755, 0.2434]], [[0.5333, 0.2111], [0.5355, 0.2443]]] satisfies [Vec2, Vec2][]).entries()) {
       G.push({ ...stream(P(...a), P(...b), { seed: 70 + i, rate: 9, g: 9000 }), layer: 2, splash: true });
     }
 
@@ -110,27 +143,27 @@ export class LifeLayer {
       { c: P(0.1401, 0.3937), rx: 600, ry: 600, period: 7 },
     ];
     // still water where something stirs now and then
-    this.stirs = [
+    this.stirs = ([
       { poly: [[0.10, 0.89], [0.22, 0.885], [0.22, 0.965], [0.10, 0.965]], every: 2.5, r: 260 },
       { poly: [[0.03, 0.47], [0.085, 0.47], [0.085, 0.56], [0.03, 0.56]], every: 4, r: 200 },
       { poly: [[0.15, 0.47], [0.21, 0.47], [0.21, 0.565], [0.15, 0.565]], every: 4, r: 200 },
       { poly: [[0.45, 0.435], [0.56, 0.435], [0.56, 0.46], [0.45, 0.46]], every: 3, r: 220 },
       { poly: [[0.33, 0.29], [0.72, 0.29], [0.72, 0.325], [0.33, 0.325]], every: 2, r: 300 },
       { poly: [[0.26, 0.6], [0.45, 0.6], [0.45, 0.735], [0.26, 0.735]], every: 2.2, r: 260 },
-    ].map((w) => ({ ...w, poly: poly(w.poly), next: Math.random() * w.every }));
+    ] satisfies Omit<Stir, 'next'>[]).map((w) => ({ ...w, poly: poly(w.poly), next: Math.random() * w.every }));
     return G;
   }
 
-  splash(x, y, r) { this.rings.push({ x, y, r, t: 0 }); if (this.rings.length > 60) this.rings.shift(); }
+  splash(x: number, y: number, r: number): void { this.rings.push({ x, y, r, t: 0 }); if (this.rings.length > 60) this.rings.shift(); }
 
-  resize() {
+  resize(): void {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = Math.round(window.innerWidth * dpr), h = Math.round(window.innerHeight * dpr);
     if (this.canvas.width !== w || this.canvas.height !== h) { this.canvas.width = w; this.canvas.height = h; }
     this.dpr = dpr;
   }
 
-  frame(dt, time) {
+  frame(dt: number, time: number): void {
     this.resize();
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -143,7 +176,7 @@ export class LifeLayer {
     if (clip !== this.clip) { this.canvas.style.clipPath = clip; this.clip = clip; }
     const v = c.view();
     const pad = (v.x1 - v.x0) * 0.15;
-    const inView = (x, y, m = 0) => x > v.x0 - pad - m && x < v.x1 + pad + m && y > v.y0 - pad - m && y < v.y1 + pad + m;
+    const inView: InView = (x, y, m = 0) => x > v.x0 - pad - m && x < v.x1 + pad + m && y > v.y0 - pad - m && y < v.y1 + pad + m;
     ctx.setTransform(k * s, 0, 0, k * s, k * (c.w / 2 - c.cx * s), k * (c.h / 2 - c.cy * s));
 
     // update everything (cheap), but only near groups at full rate
@@ -197,7 +230,7 @@ export class LifeLayer {
     }
   }
 
-  drawGlass(ctx, time, s, inView) {
+  drawGlass(ctx: CanvasRenderingContext2D, time: number, s: number, inView: InView): void {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (const g of this.glass) {
@@ -229,7 +262,7 @@ export class LifeLayer {
     ctx.restore();
   }
 
-  stir(dt, inView) {
+  stir(dt: number, inView: InView): void {
     for (const w of this.stirs) {
       w.next -= dt;
       if (w.next > 0) continue;
@@ -241,7 +274,7 @@ export class LifeLayer {
     }
   }
 
-  drawRings(ctx, dt, s, inView) {
+  drawRings(ctx: CanvasRenderingContext2D, dt: number, s: number, inView: InView): void {
     ctx.save();
     for (const r of this.rings) {
       r.t += dt;

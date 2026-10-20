@@ -1,5 +1,5 @@
 // The brush stroke, shared by the offline analyzer (CPU) and the WebGL painter (GPU).
-// Keep footprint() and the GLSL in src/engine/shaders.js in lockstep: the analyzer
+// Keep footprint() and the GLSL in src/engine/shaders.ts in lockstep: the analyzer
 // decides where to add strokes by simulating exactly what the browser will paint.
 //
 // A stroke is a circular-arc ribbon with round caps, in level-pixel units:

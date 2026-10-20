@@ -3,13 +3,38 @@
 // Every behaviour returns { items, update(dt), time } where items is an array of
 //   { x, y, angle, scale, t, kind, alpha, phase, vx, vy, ... }
 // in the caller's units. The caller draws each item with the sprite of its choice
-// (see drawItem in sprites.js). Angles are radians, 0 = facing +x, y grows downward.
+// (see drawItem in sprites.ts). Angles are radians, 0 = facing +x, y grows downward.
 
 const TAU = Math.PI * 2;
-const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+
+export interface Point { x: number; y: number }
+export interface Box { x: number; y: number; w: number; h: number }
+export type Polygon = [number, number][];
+
+// A creature or particle, as the sprites draw it; behaviours keep their own state on top.
+export interface Item {
+  x: number; y: number; angle: number; scale: number; t: number; kind: string; alpha: number;
+  phase: number; vx: number; vy: number;
+  u?: number; // particles and leaps: progress 0..1
+  rest?: number; // wander: 1 while settled
+  bend?: number; // leap: body curvature, -1..1
+  flipX?: boolean; flipY?: boolean;
+  landed?: boolean; // a drop below its landing line (living layer)
+}
+// flock: timer and tour only with a home
+interface Bird extends Item { state: 'inside' | 'out' | 'returning'; timer: number; tour: number; speed: number }
+interface Swimmer extends Item { target: Point; speed: number; paused: number; wait: number; v: number }
+interface Insect extends Item { heading: number; v: number; rest: number; restT: number; until: number; turn: number }
+interface Particle extends Item { age: number; life: number; u: number; baseScale: number; spin: number }
+export interface Fish extends Item { airborne: number; u: number; bend: number; timer: number; dir: number }
+
+// What every behaviour returns.
+export interface Group<T extends Item = Item> { items: T[]; time: number; update(dt: number): void }
+
+const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 
 /** mulberry32: small seeded PRNG. Returns a function giving floats in [0,1). */
-export function rng(seed = 1) {
+export function rng(seed = 1): () => number {
   let a = (seed >>> 0) || 0x9e3779b9;
   return function next() {
     a = (a + 0x6d2b79f5) | 0;
@@ -19,14 +44,14 @@ export function rng(seed = 1) {
   };
 }
 
-function makeItem(r, kind, extra) {
+function makeItem(r: () => number, kind: string, extra: Partial<Item>): Item {
   return {
     x: 0, y: 0, angle: 0, scale: 0.85 + r() * 0.3, t: r() * 100, kind, alpha: 1,
     phase: r() * TAU, vx: 0, vy: 0, ...extra,
   };
 }
 
-function turnToward(angle, target, maxStep) {
+function turnToward(angle: number, target: number, maxStep: number): number {
   let d = target - angle;
   d = ((d + Math.PI) % TAU + TAU) % TAU - Math.PI;
   return angle + clamp(d, -maxStep, maxStep);
@@ -45,7 +70,11 @@ function turnToward(angle, target, maxStep) {
  *   into it before the cycle repeats. Items carry `state`: 'inside' | 'out' | 'returning'.
  * - speed: cruise speed in caller units per second.
  */
-export function flock(opts) {
+export interface FlockOptions {
+  count?: number; bounds: Box; home?: Point | null; seed?: number; speed?: number; neighbor?: number | null;
+  separation?: number | null; tour?: number; stagger?: number; rest?: number;
+}
+export function flock(opts: FlockOptions) {
   const {
     count = 30, bounds, home = null, seed = 1, speed = 60, neighbor = null,
     separation = null, tour = 14, stagger = 0.25, rest = 3,
@@ -54,9 +83,9 @@ export function flock(opts) {
   const diag = Math.hypot(bounds.w, bounds.h);
   const nbR = neighbor || diag * 0.12;
   const sepR = separation || nbR * 0.35;
-  const items = [];
+  const items: Bird[] = [];
   for (let i = 0; i < count; i++) {
-    const it = makeItem(r, 'bird', {});
+    const it = makeItem(r, 'bird', {}) as Bird; // its own fields are set below
     if (home) {
       it.x = home.x; it.y = home.y; it.alpha = 0; it.state = 'inside';
       it.timer = i * stagger + r() * stagger;
@@ -71,7 +100,7 @@ export function flock(opts) {
   }
   const api = { items, time: 0, update, bounds, home };
 
-  function update(dt) {
+  function update(dt: number) {
     api.time += dt;
     const n = items.length;
     for (let i = 0; i < n; i++) {
@@ -80,7 +109,7 @@ export function flock(opts) {
       if (b.state === 'inside') {
         b.timer -= dt;
         if (b.timer <= 0) {
-          b.state = 'out'; b.alpha = 1; b.x = home.x; b.y = home.y; b.timer = b.tour;
+          b.state = 'out'; b.alpha = 1; b.x = home!.x; b.y = home!.y; b.timer = b.tour;
           const a = b.angle; b.vx = Math.cos(a) * b.speed; b.vy = Math.sin(a) * b.speed;
         }
         continue;
@@ -144,7 +173,7 @@ export function flock(opts) {
 // swimPath: gliding inside / along a closed polygon
 // ---------------------------------------------------------------------------
 
-function pointInPolygon(x, y, poly) {
+function pointInPolygon(x: number, y: number, poly: Polygon): boolean {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
@@ -152,24 +181,24 @@ function pointInPolygon(x, y, poly) {
   }
   return inside;
 }
-function polyBounds(poly) {
+function polyBounds(poly: Polygon): Box {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const [x, y] of poly) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
-function polyCentroid(poly) {
+function polyCentroid(poly: Polygon): Point {
   let x = 0, y = 0;
   for (const p of poly) { x += p[0]; y += p[1]; }
   return { x: x / poly.length, y: y / poly.length };
 }
-function randomInPolygon(r, poly, bb, inset) {
+function randomInPolygon(r: () => number, poly: Polygon, bb: Box, inset: number): Point {
   for (let k = 0; k < 40; k++) {
     const x = bb.x + r() * bb.w, y = bb.y + r() * bb.h;
     if (pointInPolygon(x, y, poly) && (inset <= 0 || distToEdge(x, y, poly) > inset)) return { x, y };
   }
   return polyCentroid(poly);
 }
-function distToEdge(x, y, poly) {
+function distToEdge(x: number, y: number, poly: Polygon): number {
   let best = Infinity;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const ax = poly[j][0], ay = poly[j][1], bx = poly[i][0], by = poly[i][1];
@@ -187,14 +216,15 @@ function distToEdge(x, y, poly) {
  * idle (paddling in place) for a while when they arrive. `inset` keeps them off the
  * shoreline. Items carry `heading` (smoothed) and `paused` (0/1).
  */
-export function swimPath(opts) {
+export interface SwimOptions { polygon: Polygon; speed?: number; seed?: number; count?: number; inset?: number | null; turnRate?: number; pause?: number }
+export function swimPath(opts: SwimOptions) {
   const { polygon, speed = 20, seed = 1, count = 3, inset = null, turnRate = 1.2, pause = 3 } = opts;
   const r = rng(seed);
   const bb = polyBounds(polygon);
   const ins = inset != null ? inset : Math.min(bb.w, bb.h) * 0.12;
-  const items = [];
+  const items: Swimmer[] = [];
   for (let i = 0; i < count; i++) {
-    const it = makeItem(r, 'swimmer', {});
+    const it = makeItem(r, 'swimmer', {}) as Swimmer; // its own fields are set below
     const p = randomInPolygon(r, polygon, bb, ins);
     it.x = p.x; it.y = p.y;
     it.target = randomInPolygon(r, polygon, bb, ins);
@@ -204,7 +234,7 @@ export function swimPath(opts) {
     items.push(it);
   }
   const api = { items, time: 0, update, polygon };
-  function update(dt) {
+  function update(dt: number) {
     api.time += dt;
     for (const s of items) {
       s.t += dt;
@@ -250,12 +280,13 @@ export function swimPath(opts) {
  * bob. With `settle` > 0, items occasionally land (v = 0, item.rest = 1) for that many
  * seconds, so a butterfly can close its wings on a flower.
  */
-export function wander(opts) {
+export interface WanderOptions { center: Point; radius: number; speed?: number; count?: number; seed?: number; jitter?: number; flutter?: number; settle?: number; dart?: number }
+export function wander(opts: WanderOptions) {
   const { center, radius, speed = 20, count = 1, seed = 1, jitter = 2.5, flutter = 0.3, settle = 0, dart = 0 } = opts;
   const r = rng(seed);
-  const items = [];
+  const items: Insect[] = [];
   for (let i = 0; i < count; i++) {
-    const it = makeItem(r, 'insect', {});
+    const it = makeItem(r, 'insect', {}) as Insect; // its own fields are set below
     const a = r() * TAU, d = Math.sqrt(r()) * radius;
     it.x = center.x + Math.cos(a) * d; it.y = center.y + Math.sin(a) * d;
     it.angle = r() * TAU; it.heading = it.angle; it.v = speed; it.rest = 0; it.restT = 0;
@@ -263,7 +294,7 @@ export function wander(opts) {
     items.push(it);
   }
   const api = { items, time: 0, update, center, radius };
-  function update(dt) {
+  function update(dt: number) {
     api.time += dt;
     for (const it of items) {
       it.t += dt;
@@ -321,7 +352,13 @@ export function wander(opts) {
  * - Items stay in the array while alive; dead ones are recycled. Set `prewarm`
  *   seconds to simulate ahead so the emitter does not start empty.
  */
-export function particles(opts) {
+export interface ParticleOptions {
+  emitter: { x: number; y: number; w?: number; h?: number }; rate?: number; life?: number; velocity?: Point;
+  gravity?: number | Point; spread?: number; seed?: number; max?: number | null; drag?: number; wobble?: number;
+  grow?: number; kind?: string; scaleRange?: [number, number]; fade?: number; prewarm?: number;
+  angleFromVelocity?: boolean; spin?: number;
+}
+export function particles(opts: ParticleOptions) {
   const {
     emitter, rate = 10, life = 3, velocity = { x: 0, y: -20 }, gravity = 0, spread = 0.3,
     seed = 1, max = null, drag = 0, wobble = 0, grow = 1, kind = 'particle', scaleRange = [0.7, 1.3],
@@ -330,17 +367,17 @@ export function particles(opts) {
   const r = rng(seed);
   const g = typeof gravity === 'number' ? { x: 0, y: gravity } : gravity;
   const cap = max || Math.ceil(rate * life * 1.4) + 2;
-  const items = [];
+  const items: Particle[] = [];
   const api = { items, time: 0, update, emit, emitter };
   let acc = 0;
-  const pool = [];
+  const pool: Particle[] = [];
   const sp0 = Math.hypot(velocity.x, velocity.y);
   const a0 = Math.atan2(velocity.y, velocity.x);
 
   function emit(n = 1) {
     for (let i = 0; i < n; i++) {
       if (items.length >= cap && pool.length === 0) return;
-      const p = pool.pop() || makeItem(r, kind, {});
+      const p = pool.pop() || makeItem(r, kind, {}) as Particle; // its own fields are set below
       const ew = emitter.w || 0, eh = emitter.h || 0;
       p.x = emitter.x + (r() - 0.5) * ew; p.y = emitter.y + (r() - 0.5) * eh;
       const a = a0 + (r() - 0.5) * 2 * spread;
@@ -355,7 +392,7 @@ export function particles(opts) {
       if (items.indexOf(p) < 0) items.push(p);
     }
   }
-  function update(dt) {
+  function update(dt: number) {
     api.time += dt;
     acc += rate * dt;
     while (acc >= 1) { acc -= 1; emit(1); }
@@ -393,18 +430,22 @@ export function particles(opts) {
  * noses up on the way out and dives nose-first on the way in. `splash` is a callback
  * (item, phase: 'exit'|'entry') for the caller to spawn droplets.
  */
-export function leap(opts) {
+export interface LeapOptions {
+  from: Point; to: Point; height: number; period?: number; seed?: number; count?: number; duration?: number;
+  splash?: ((fish: Fish, phase: 'exit' | 'entry') => void) | null; mirror?: boolean;
+}
+export function leap(opts: LeapOptions) {
   const { from, to, height, period = 6, seed = 1, count = 1, duration = 1.1, splash = null, mirror = false } = opts;
   const r = rng(seed);
-  const items = [];
+  const items: Fish[] = [];
   for (let i = 0; i < count; i++) {
-    const it = makeItem(r, 'fish', {});
+    const it = makeItem(r, 'fish', {}) as Fish; // its own fields are set below
     it.x = from.x; it.y = from.y; it.alpha = 0; it.airborne = 0; it.u = 0; it.bend = 0;
     it.timer = r() * period; it.dir = mirror && r() < 0.5 ? -1 : 1; it.scale = 0.85 + r() * 0.3;
     items.push(it);
   }
   const api = { items, time: 0, update, from, to };
-  function update(dt) {
+  function update(dt: number) {
     api.time += dt;
     for (const f of items) {
       f.t += dt;
@@ -445,11 +486,12 @@ export function leap(opts) {
  * can breathe, look around and flick its tail. Cheap helper so perched birds use the
  * same items contract as the moving behaviours.
  */
-export function perch(opts) {
+export interface PerchOptions { points: { x: number; y: number; angle?: number; scale?: number }[]; seed?: number }
+export function perch(opts: PerchOptions) {
   const { points, seed = 1 } = opts;
   const r = rng(seed);
   const items = points.map((p) => makeItem(r, 'perched', { x: p.x, y: p.y, angle: p.angle || 0, scale: p.scale || 1 }));
   const api = { items, time: 0, update };
-  function update(dt) { api.time += dt; for (const it of items) it.t += dt; }
+  function update(dt: number) { api.time += dt; for (const it of items) it.t += dt; }
   return api;
 }
