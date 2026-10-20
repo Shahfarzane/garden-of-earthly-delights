@@ -1,15 +1,12 @@
-@font-face {
-  font-family: 'Die Grotesk';
-  src: url('../fonts/DieGroteskVF.woff2') format('woff2-variations'), url('../fonts/DieGroteskVF.woff2') format('woff2');
-  font-weight: 100 900;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Martina Plantijn';
-  src: url('../fonts/MartinaPlantijnVF.woff2') format('woff2-variations'), url('../fonts/MartinaPlantijnVF.woff2') format('woff2');
-  font-weight: 300 900;
-  font-display: swap;
-}
+/* Söhne by Klim, as Mirage loads it (klim-paintings src/styles/base.css:1-43). The files live in fonts/,
+   which is not in git: the licence covers the site, not the public repository. The icons are
+   glyphs of their own face, blank rather than a fallback's until it is in. */
+@font-face { font-family: 'Sohne'; font-style: normal; font-weight: normal; font-display: swap; src: url('../fonts/Sohne-Buch.woff2') format('woff2'); }
+@font-face { font-family: 'Sohne'; font-style: italic; font-weight: normal; font-display: swap; src: url('../fonts/Sohne-BuchKursiv.woff2') format('woff2'); }
+@font-face { font-family: 'Sohne'; font-style: normal; font-weight: bold; font-display: swap; src: url('../fonts/Sohne-Halbfett.woff2') format('woff2'); }
+@font-face { font-family: 'Sohne'; font-style: italic; font-weight: bold; font-display: swap; src: url('../fonts/Sohne-HalbfettKursiv.woff2') format('woff2'); }
+@font-face { font-family: 'Sohne Mono'; font-style: normal; font-weight: normal; font-display: swap; src: url('../fonts/SohneMono-Buch.woff2') format('woff2'); }
+@font-face { font-family: 'Sohne Icons'; font-style: normal; font-weight: normal; font-display: block; src: url('../fonts/SohneIkon-Buch.woff2') format('woff2'); }
 
 /* Mirage's design: klim-paintings (Shahin's paintings site), read on 2026-10-20 and checked against
    its live computed styles. Colours: schemeVars() in src/lib/color.ts:77-101 for its black and white
@@ -17,10 +14,11 @@
    src/styles/theme.css:72-82 over the basis of tokens.css:5, 103-118. Grid and margins:
    tokens.css:23-27, 113. Navbar: tokens.css:29-31, src/components/Navbar.tsx:10-12, 64-101.
    Lozenges: src/styles/components.css:3-69. Menu: src/components/Menu.tsx:32-42. Panels on the
-   painting: src/components/PaintingFrame.tsx:21-22, 143-157. The fonts stay this site's own. */
+   painting: src/components/PaintingFrame.tsx:21-22, 143-157. Fonts: src/styles/theme.css:39-45. */
 :root {
-  --font-text: 'Die Grotesk', ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
-  --font-display: 'Martina Plantijn', 'Iowan Old Style', Georgia, serif;
+  --font-ui: 'Sohne', -apple-system, system-ui, blinkmacsystemfont, 'Helvetica', 'Arial', sans-serif;
+  --font-mono: 'Sohne Mono', 'Lucida Console', monaco, monospace;
+  --font-icon: 'Sohne Icons';
   --fg: #fff;
   --bg: #000;
   --mix-1: #e2e2e2;
@@ -68,14 +66,14 @@
   --nav-h: 48px;
   --radius: 2px;
   --menu-span: 2;
-  --strokes-span: 3;
+  --strokes-span: 4;
   --story-span: 4;
   --story-w: calc(var(--story-span) * var(--col) + (var(--story-span) - 1) * var(--gutter));
   --ease: cubic-bezier(0.22, 0.8, 0.24, 1);
   color-scheme: dark;
 }
 @media (max-width: 1366px) {
-  :root { --fs-1: 12px; --fs-2: 14px; --fs-3: 16px; --fs-4: 20px; --fs-5: 25px; --fs-6: 30px; --menu-span: 3; --strokes-span: 4; --story-span: 5; }
+  :root { --fs-1: 12px; --fs-2: 14px; --fs-3: 16px; --fs-4: 20px; --fs-5: 25px; --fs-6: 30px; --menu-span: 3; --strokes-span: 5; --story-span: 5; }
 }
 @media (max-width: 1024px) {
   :root { --fs-1: 12px; --fs-2: 14px; --fs-3: 16px; --fs-4: 18px; --fs-5: 21px; --fs-6: 24px; --menu-span: 4; --strokes-span: 6; --story-span: 6; }
@@ -91,7 +89,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); overflow: hidden; overscroll-behavior: none; }
-body { font: 400 var(--fs-2)/var(--leading-b2) var(--font-text); font-optical-sizing: auto; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-kerning: normal; }
+body { font: 400 var(--fs-2)/var(--leading-b2) var(--font-ui); font-optical-sizing: auto; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-kerning: normal; }
 canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
 #paint { touch-action: none; cursor: grab; }
 #paint.dragging { cursor: grabbing; }
@@ -108,8 +106,8 @@ button { font: inherit; line-height: normal; color: inherit; background: none; b
 .lz { display: inline-flex; align-items: center; height: var(--lz-h); padding: 0 8px; border-radius: var(--radius); font-size: var(--fs-2); line-height: normal; color: var(--lz-fg, var(--fg)); background: var(--lz-bg, var(--bg)); text-decoration: none; white-space: nowrap; pointer-events: auto; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
 .lz:hover, .lz[data-state='open'], .lz:active, .lz[aria-pressed='true'], .lz[role='radio'][aria-checked='true'], .lz[data-on] { color: var(--lz-bg, var(--bg)); background: var(--lz-fg, var(--fg)); }
 .lz > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.lz svg { width: 1em; height: 1em; flex: none; }
-.lz.icon { width: 2.2975em; justify-content: center; padding: 0; }
+.icon { font-family: var(--font-icon); font-style: normal; }
+.lz.square { width: 2.2975em; justify-content: center; padding: 0; }
 
 /* ---------- no WebGL2 or no JavaScript ---------- */
 .fallback { position: fixed; inset: 0; margin: auto; width: min(420px, calc(100vw - 2 * var(--margin))); height: fit-content; font-size: var(--fs-3); line-height: var(--leading-b1); text-align: center; }
@@ -143,13 +141,13 @@ button { font: inherit; line-height: normal; color: inherit; background: none; b
 .panel .note { margin: 8px 8px 0; font-size: var(--fs-1); line-height: var(--leading-b2); color: var(--mix-3); }
 .strokes { --span: var(--strokes-span); }
 .strokes .big { margin: 3px 8px 8px; color: var(--mix-3); }
-.strokes .big b { display: block; color: var(--fg); font: 400 var(--fs-5)/var(--leading-h3) var(--font-display); font-variant-numeric: lining-nums tabular-nums; letter-spacing: -0.01em; }
+.strokes .big b { display: block; color: var(--fg); font: 400 var(--fs-5)/var(--leading-h3) var(--font-ui); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 /* a muted label and its value per row, rules between rows (InfoList.tsx) */
 .stats { margin: 0 0 5px; display: grid; grid-template-columns: auto 1fr; }
 .stats dt, .stats dd { margin: 0; padding: 0.25em 8px; border-top: 1px solid var(--line); }
 .stats dt:first-of-type, .stats dd:first-of-type { border-top: 0; }
 .stats dt { color: var(--mix-3); }
-.stats dd { text-align: right; font-variant-numeric: tabular-nums; }
+.stats dd { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 /* ---------- zoom, bottom right ---------- */
 .zoom { position: fixed; right: var(--margin); bottom: var(--margin); display: flex; gap: var(--lz-gap); pointer-events: none; transition: right 0.45s var(--ease), bottom 0.45s var(--ease); }
@@ -169,7 +167,7 @@ body.reading .zoom { right: calc(var(--story-w) + 2 * var(--margin)); }
 .story.open { transform: none; visibility: visible; transition: transform 0.45s var(--ease); }
 .story header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--lz-gap); padding: 5px 5px 0; }
 .story .where { margin: 0; padding: 0 8px; line-height: var(--lz-h); color: var(--mix-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.story h2 { margin: var(--s2) 13px 0; font: 400 var(--fs-5)/var(--leading-h3) var(--font-display); letter-spacing: -0.01em; text-wrap: balance; }
+.story h2 { margin: var(--s2) 13px 0; font: 400 var(--fs-5)/var(--leading-h3) var(--font-ui); letter-spacing: -0.01em; text-wrap: balance; }
 .story .body { flex: 1; overflow: auto; padding: var(--s2) 13px var(--margin); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .story .body p { margin: 0 0 1em; max-width: 60ch; text-wrap: pretty; hyphens: manual; }
 

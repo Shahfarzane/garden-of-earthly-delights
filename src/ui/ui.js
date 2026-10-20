@@ -7,11 +7,8 @@ import { WORLD_W, WORLD_H } from '../world.js';
 export const MIRAGE_URL = '/';
 const SOURCE_URL = 'https://github.com/Shahfarzane/garden-of-earthly-delights';
 
-const ICON = {
-  menu: '<path d="M1.5 4h13M1.5 8h13M1.5 12h13"/>',
-  arrowNe: '<path d="M5 11 11 5M6.5 5H11v4.5"/>',
-};
-const svg = (name) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">${ICON[name]}</svg>`;
+// the icons are characters of Söhne's icon face (Mirage's Icon.tsx)
+const icon = (glyph) => `<i class="icon" aria-hidden="true">${glyph}</i>`;
 
 const PANEL_NAME = { eden: 'Paradise, left wing', garden: 'The garden, centre panel', hell: 'Hell, right wing' };
 const SOUND_NOTE = {
@@ -87,14 +84,14 @@ export class UI {
     this.strokesBtn = lz('Strokes', () => this.togglePop('strokes'), { 'aria-haspopup': 'dialog', 'aria-expanded': 'false' });
     this.soundBtn = lz('Sound', () => this.togglePop('sound'), { 'aria-haspopup': 'dialog', 'aria-expanded': 'false' });
     controls.append(this.wingsBtn, this.strokesBtn, this.soundBtn);
-    this.menuBtn = lz(svg('menu'), () => this.togglePop('menu'), { class: 'lz icon', 'aria-label': 'Menu', 'aria-haspopup': 'menu', 'aria-expanded': 'false' });
+    this.menuBtn = lz(icon('☰'), () => this.togglePop('menu'), { class: 'lz square', 'aria-label': 'Menu', 'aria-haspopup': 'menu', 'aria-expanded': 'false' });
     this.bar.append(controls, this.menuBtn);
 
     // zoom
     this.zoom = el('div', { class: 'zoom', role: 'toolbar', 'aria-label': 'Zoom' });
     this.zoom.append(
-      lz('−', () => this.camera.zoomAt(1 / 1.8, this.camera.w / 2, this.camera.h / 2), { class: 'lz icon', 'aria-label': 'Zoom out', title: 'Zoom out (-)' }),
-      lz('+', () => this.camera.zoomAt(1.8, this.camera.w / 2, this.camera.h / 2), { class: 'lz icon', 'aria-label': 'Zoom in', title: 'Zoom in (+)' }),
+      lz('−', () => this.camera.zoomAt(1 / 1.8, this.camera.w / 2, this.camera.h / 2), { class: 'lz square', 'aria-label': 'Zoom out', title: 'Zoom out (-)' }),
+      lz('+', () => this.camera.zoomAt(1.8, this.camera.w / 2, this.camera.h / 2), { class: 'lz square', 'aria-label': 'Zoom in', title: 'Zoom in (+)' }),
       lz('Whole painting', () => this.camera.flyTo(WORLD_W / 2, WORLD_H / 2, this.camera.fitScale), { title: 'Whole painting (0)' }),
     );
 
@@ -138,7 +135,7 @@ export class UI {
       </dl>
       <button class="lz" type="button" aria-pressed="false">Show each stroke in its own colour</button>
       <div class="sep" role="separator"></div>
-      <a class="lz out" href="${SOURCE_URL}" target="_blank" rel="noopener"><span>Source on GitHub, MIT licence</span>${svg('arrowNe')}</a>`;
+      <a class="lz out" href="${SOURCE_URL}" target="_blank" rel="noopener"><span>Source on GitHub, MIT licence</span>${icon('↗')}</a>`;
     this.strokeSwitch = this.strokesPop.querySelector('[aria-pressed]');
     this.strokeSwitch.addEventListener('click', () => this.setStrokeView(!this.strokeView));
 
