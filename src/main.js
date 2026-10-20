@@ -95,8 +95,10 @@ document.addEventListener('visibilitychange', () => {
 window.__garden = { camera, renderer, post, scene, ui, sound, life, animator, shutters };
 
 // 60 fps is plenty for a living painting; on 120 Hz screens every other frame is skipped,
-// halving GPU and battery cost.
-const MIN_FRAME_MS = 1000 / 61;
+// halving GPU and battery cost. rAF timestamps jitter by a millisecond or two, so two 120 Hz
+// frames can add up to less than 16.4 ms (1000 / 61), which skipped a third frame: 25 ms frames,
+// one in eight at idle. The threshold sits at one and a half 120 Hz frames instead.
+const MIN_FRAME_MS = 12.5;
 let last = performance.now();
 function loop(now) {
   if (now - last < MIN_FRAME_MS) { requestAnimationFrame(loop); return; }
