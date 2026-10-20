@@ -39,7 +39,7 @@ Binary tile file `public/data/strokes/{z}/{x}_{y}.bin`: header + packed 12-byte 
 3. `effects`: low-res effect map (water, fire/glow, foliage, sky masks) from color classification inside hand-drawn region polygons.
 4. Report per level: stroke count, bytes, PSNR of simulated canvas vs target. Gate: visual check of rendered crops next to the reference at z=6.
 
-## Browser app (src/, vanilla JS, Vite, WebGL2)
+## Browser app (src/, TypeScript since Round 10, Vite, WebGL2)
 
 - Camera: pan/zoom with inertia, wheel, pinch, drag, keyboard, double-click, rubber-band clamp at the painting edges.
 - Tile painter: atlas of 256 px tiles, LRU; a tile at level z draws strokes of levels 0..z (ancestor tiles plus neighbors for overlap). New tiles get painted in progressively (strokes appear) while the parent tile shows upscaled underneath.
@@ -326,3 +326,24 @@ With everything in this round, same conditions:
 | 390x844 upright | 71 | 6.65 | 176 to 180 ms | 1.75 s (z3) | |
 
 The live site measured 1.18 to 1.21 s and 2.14 to 2.51 s in Round 7 over a faster real connection, so compare these rows with each other, not with those. The cuts still worth making are Round 7's second to fourth proposals: packed files per level, effects after the first view, and immutable versioned data.
+
+## Round 10 (2026-10-20): TypeScript
+
+The code is strict TypeScript: 51 files, 9,593 lines. `src/` has 34 (8,216 lines: the 32 converted, plus `scene.ts` and `dom.d.ts`), `tools/` 14 (1,256 lines), and the root the three configs. Behaviour is unchanged. Earlier rounds name the files as they were then, with `.js`.
+
+- Two projects, both strict and `noEmit`: `tsconfig.app.json` for `src/` (DOM, Vite's client types) and `tsconfig.node.json` for `tools/` and the build configs (Node types). `npm run typecheck` runs `tsc -b` over both with TypeScript 7.0.2, the native compiler, in about 0.3 s. `npm run check` runs it, then the build.
+- The analyzer still runs with plain `node`: Node 24 strips the types. `erasableSyntaxOnly` and `verbatimModuleSyntax` keep `tools/` and what it imports from `src/` (`shared/strokeModel.ts`, the data types in `scene.ts`) free of enums, namespaces and parameter properties. Imports name their `.ts` files, which Node requires and Vite accepts.
+- Typed shapes: the 12-byte stroke record (`Stroke`), scene.json and stats.json (`src/scene.ts`; `buildScene.ts` and `manifest.ts` write against them), the camera's rects and flights, stroke file states (idle, queued, loading, ready, missing), tile states (wait, base, paint, done), the post pass's rigs and frame info, the rigs as a discriminated union, the audio option objects. Bird species, voice types, cues and sprite names are literal unions checked with `satisfies`, so a misspelt name fails the typecheck.
+- No `any`, no `@ts-expect-error`. 63 non-null assertions: DOM lookups of markup the same code wrote, tile fields set when a tile leaves `wait`, the audio context once started. About 45 type assertions: event targets, `Object.keys` and `Object.entries`, palette lookups with a fallback, items filled right after creation.
+- `noUncheckedIndexedAccess` stays off. It flags 580 index reads, nearly all typed-array reads in the hot loops of the boids, the rasterizer, `decrack` and the analyzer's blur.
+- The types found two oddities, both kept as they behave. `vite.config` passed `parsed.settings` to `writeRootConfig`; the parsed config has no such field, so the root config holds the build context only, and the call now passes `undefined`. The frame loop passed `dt` to `UI.update`, which takes no argument.
+
+Verified, the JS at 9b0e6ae against the TypeScript:
+
+- Analyzer, in a scratch copy of the repo so nothing touches the real stroke data: interior levels 0 to 2 from targets cut out of the 18,000 px copy, exterior levels 0 to 1 through `prepareExterior`, then `simPreview`, `effects`, `buildScene`, `manifest` and `decrack`. 143 output files, byte-identical under `cmp`, both run with plain `node`. The JS baseline ran twice to rule out nondeterminism. `prepare` and `prepareDeep` stop at the same missing-scan error.
+- Bundle: the unminified production bundle differs in executable code at six places, each equivalent: `String(r.status)` and `String(value)` where the runtime already converted, `Number()` around two booleans a sort subtracted, a local for the scene buffer in `Renderer.frame`, an `isWarp` guard around the same `KIND` lookup, and `ui.update()` without the ignored argument. The rest is class field declarations, comments and three GLSL comments.
+- Interaction suites with real CDP input: 44, 44, 44, 43 and 43 at 1728x990, 1440x900, 844x390, 768x1024 and 390x844. Fixed-frame checks: 30, 15 and 15. Same counts as before.
+- Round 6 identity: 24 z7 tiles at 600k, 30,000 and 7,777 instances per frame took 4, 67 and 258 frames, and same-slot tiles read back byte-identical. Same result as before, to the frame count.
+- Screenshots at 1728x990 and 390x844 (default, stroke view, menu, a story; reduced motion): 9 of 10 byte-identical. The 1728x990 story view differs in 90 px by at most 2 levels; two loads of the JS differ in 68 px the same way, from atlas slot placement.
+- Sprites at three sizes per palette and pose, the motion behaviours, the camera, the animator, the living layer at 13 views, the sound zones and 73 offline audio renders, hashed with seeded randomness: identical.
+- `dev/audio.html` and `dev/life.html` load from `.ts` without errors.

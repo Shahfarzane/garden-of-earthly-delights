@@ -16,6 +16,12 @@ npm run dev
 
 Open http://localhost:5317/garden/.
 
+The code is strict TypeScript. This type-checks the app and the analyzer, then builds the site:
+
+```bash
+npm run check
+```
+
 The stroke data (about 690 MB) is generated, not committed. A fresh clone shows the board, the frames and the UI but no paint until you run the pipeline in [Regenerate the data](#regenerate-the-data), which needs the 2 GB tile scans.
 
 Controls: the frame stays put and only the painting moves inside it. On a phone held upright the frame fills the screen and the painting starts on the centre panel's middle; pan sideways to reach the wings. Pinch (or Ctrl/Cmd + scroll, or the mouse wheel) to zoom, two-finger scroll or drag to pan once zoomed in, double-click to zoom in (Shift to zoom out), arrow keys or WASD to pan, `+`/`-` to zoom, `0` for the whole triptych, Esc to close a story or panel, hold `L` to sweep a raking lamp over the varnish. Top right: Exterior closes or opens the wings, Strokes shows the counts and a mode that paints every stroke in its own colour, Sound picks off, nature or period music, and the menu holds story markers, living painting, varnish and cracks, and full screen. Zoom and the whole painting are bottom right. The interface follows Mirage, Shahin's site for every painting he repaints with code; the breadcrumb leads back to it.
@@ -26,15 +32,17 @@ Fonts: the interface is set in Söhne by Klim Type Foundry, as Mirage is, under 
 
 | layer | where | what |
 | --- | --- | --- |
-| Analyzer | `tools/` | Decodes the Prado tile scans with JPEG shrink-on-load, removes craquelure, then paints each 256 px tile of a level pyramid with layered arc-shaped strokes where a simulated copy still differs from the original. `src/shared/strokeModel.js` is shared with the browser so the simulation matches the GPU pixel for pixel. |
-| Painter | `src/engine/` | Tile atlas painted by instanced GLSL strokes (`shaders.js`), progressive paint-in, camera with inertia and van Wijk flights, post pass for water, fire, foliage, sky, lightning, craquelure, frames and hinges (`post.js`). |
+| Analyzer | `tools/` | Decodes the Prado tile scans with JPEG shrink-on-load, removes craquelure, then paints each 256 px tile of a level pyramid with layered arc-shaped strokes where a simulated copy still differs from the original. `src/shared/strokeModel.ts` is shared with the browser so the simulation matches the GPU pixel for pixel. |
+| Painter | `src/engine/` | Tile atlas painted by instanced GLSL strokes (`shaders.ts`), progressive paint-in, camera with inertia and van Wijk flights, post pass for water, fire, foliage, sky, lightning, craquelure, frames and hinges (`post.ts`). |
 | Living layer | `src/living/`, `src/life/` | Canvas2D creatures and particles placed where Bosch painted them: the flock from Eden's rock, the Fountain of Life's jets, leaping fish, bubbles, the cavalcade's dust, Hell's smoke, embers, searchlights, bats. |
-| Living figures | `src/living/animator.js`, `src/living/rigs.js` | Rigs that make figures move: rotate, translate and scale warps of the painted image in the post shader, plus eyes that follow the pointer and blink, splashes and glows drawn on the overlay. |
+| Living figures | `src/living/animator.ts`, `src/living/rigs.ts` | Rigs that make figures move: rotate, translate and scale warps of the painted image in the post shader, plus eyes that follow the pointer and blink, splashes and glows drawn on the overlay. |
 | Sound | `src/audio/` | Web Audio synthesis only, no audio files. Two modes: nature (wind, water, birds, fire, crowds, thunder placed on 105 sound zones, no music) and period (the same plus a generated lute, recorder and viol consort per panel, with the melody written on a sinner's buttocks, read from the full-resolution scan, as Hell's cantus firmus). |
-| Exterior | `src/ui/shutters.js`, `src/engine/exteriorPainter.js` | Closing the wings swings the shutters shut over the centre panel; their faces carry the grisaille "Creation of the World" painted from its own stroke data at twice the photo's resolution, inside procedural frames. |
-| Stories | `src/ui/`, `data/places.json`, `data/stories.json` | 46 story points as quiet markers that appear once you are close enough. `data/places.json` holds where each story and sound zone sits; `data/stories.json` holds the titles and texts, written for this project. `node tools/buildScene.js` joins them into `public/data/scene.json`. |
+| Exterior | `src/ui/shutters.ts`, `src/engine/exteriorPainter.ts` | Closing the wings swings the shutters shut over the centre panel; their faces carry the grisaille "Creation of the World" painted from its own stroke data at twice the photo's resolution, inside procedural frames. |
+| Stories | `src/ui/`, `data/places.json`, `data/stories.json` | 46 story points as quiet markers that appear once you are close enough. `data/places.json` holds where each story and sound zone sits; `data/stories.json` holds the titles and texts, written for this project. `node tools/buildScene.ts` joins them into `public/data/scene.json`. |
 
 ## Regenerate the data
+
+The analyzer is TypeScript that Node 24 runs as is (Node strips the types), so it needs no build step.
 
 Sources (not in git):
 
@@ -42,46 +50,46 @@ Sources (not in git):
 - For the closed exterior, the photo https://commons.wikimedia.org/wiki/File:El_Bosco_-_Tr%C3%ADptico_del_Jard%C3%ADn_de_las_delicias.jpg (1806 x 1920, sha1 ac1a5f789ae2e611b5dcdaece5a4ceff2b2b5caa), anywhere outside the repo.
 
 ```bash
-node --max-old-space-size=8192 tools/prepare.js
+node --max-old-space-size=8192 tools/prepare.ts
 ```
 
 ```bash
-node tools/paint.js --levels 0-6
+node tools/paint.ts --levels 0-6
 ```
 
 ```bash
-node --max-old-space-size=8192 tools/prepareDeep.js
+node --max-old-space-size=8192 tools/prepareDeep.ts
 ```
 
 ```bash
-node tools/paint.js --levels 7-8 --deep work/deep-plan.json --workers 3 --resume
+node tools/paint.ts --levels 7-8 --deep work/deep-plan.json --workers 3 --resume
 ```
 
 ```bash
-node tools/effects.js
+node tools/effects.ts
 ```
 
 ```bash
-WORLD=exterior node tools/prepareExterior.js /path/to/El_Bosco_-_Triptico_del_Jardin_de_las_delicias.jpg
+WORLD=exterior node tools/prepareExterior.ts /path/to/El_Bosco_-_Triptico_del_Jardin_de_las_delicias.jpg
 ```
 
 ```bash
-WORLD=exterior node tools/paint.js --levels 0-3
+WORLD=exterior node tools/paint.ts --levels 0-3
 ```
 
-`--workers` trades speed for heat (all cores by default); `--resume` skips tiles already written. `node tools/manifest.js` refreshes the list of deep tiles the browser may request and writes `stats.json`, the exact counts shown in the strokes panel. `node tools/simPreview.js 6 x0 y0 x1 y1 out.png` (with `--sim` passed to `paint.js`) writes the analyzer's simulated copy next to the original for any region.
+`--workers` trades speed for heat (all cores by default); `--resume` skips tiles already written. `node tools/manifest.ts` refreshes the list of deep tiles the browser may request and writes `stats.json`, the exact counts shown in the strokes panel. `node tools/simPreview.ts 6 x0 y0 x1 y1 out.png` (with `--sim` passed to `paint.ts`) writes the analyzer's simulated copy next to the original for any region.
 
 Timing on an M1 Pro: `prepare` about 2 minutes, levels 0 to 6 about 15 minutes, the deep hotspot levels roughly an hour at full speed (z8 alone took 32 minutes). Stroke data totals about 690 MB (185 MB for levels 0 to 6, 505 MB for the deep hotspots). Without the exterior step the wings control has nothing to show on the shutters.
 
 ## Deploy
 
-The site is a static Cloudflare Worker, `garden`, configured in `cloudflare.config.ts`: two routes send mirage.nerd.ceo/garden and mirage.nerd.ceo/garden/* to it, while Mirage's own Worker holds the domain's root. The address lives in `site.config.js` (`HOST` and `BASE`); change it there in a fork. `vite build` writes Cloudflare's Build Output into `.cloudflare/output/`, with the site in a `garden/` folder of the Worker's assets, since a Worker on a route serves the paths its folders mirror, and the `cf` CLI uploads it:
+The site is a static Cloudflare Worker, `garden`, configured in `cloudflare.config.ts`: two routes send mirage.nerd.ceo/garden and mirage.nerd.ceo/garden/* to it, while Mirage's own Worker holds the domain's root. The address lives in `site.config.ts` (`HOST` and `BASE`); change it there in a fork. `vite build` writes Cloudflare's Build Output into `.cloudflare/output/`, with the site in a `garden/` folder of the Worker's assets, since a Worker on a route serves the paths its folders mirror, and the `cf` CLI uploads it:
 
 ```bash
 npm run deploy
 ```
 
-Uploads are incremental: only changed files are sent. The build writes the cache rules (`HEADERS` in `vite.config.js`) to `_headers` at the root of the assets; link previews use `public/og.jpg`, rendered from the app itself.
+Uploads are incremental: only changed files are sent. The build writes the cache rules (`HEADERS` in `vite.config.ts`) to `_headers` at the root of the assets; link previews use `public/og.jpg`, rendered from the app itself.
 
 ## Licence and sources
 

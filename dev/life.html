@@ -46,8 +46,8 @@
   </main>
 
   <script type="module">
-    import { sprites, spriteNames, drawSprite, drawItem } from '/src/life/sprites.js';
-    import { flock, swimPath, wander, particles, leap, perch } from '/src/life/motion.js';
+    import { sprites, spriteNames, drawSprite, drawItem } from '/src/life/sprites.ts';
+    import { flock, swimPath, wander, particles, leap, perch } from '/src/life/motion.ts';
 
     window.addEventListener('error', (e) => { document.getElementById('err').textContent = e.message; });
     window.addEventListener('unhandledrejection', (e) => { document.getElementById('err').textContent = String(e.reason); });
