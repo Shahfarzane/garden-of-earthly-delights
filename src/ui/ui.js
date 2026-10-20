@@ -177,7 +177,7 @@ export class UI {
       if (this.openPop) { const b = this.trigger(this.openPop); this.togglePop(this.openPop); b.focus(); } else this.closeStory();
     });
     window.addEventListener('pointerdown', (e) => {
-      if (this.openPop && !e.target.closest('.panel') && !e.target.closest('.bar')) this.togglePop(this.openPop);
+      if (this.openPop && !e.target.closest('.panel') && !e.target.closest('.bar')) { this.togglePop(this.openPop); this.dismissed = performance.now(); }
     });
   }
 
@@ -347,6 +347,8 @@ export class UI {
   // Tap on the painting: open the smallest story circle under the finger.
   tap(sx, sy) {
     if (!this.enabled || this.closed || !this.storiesOn || !this.camera.inOpening(sx, sy)) return false;
+    // the tap that closed a panel only closes it
+    if (performance.now() - (this.dismissed || 0) < 600) return false;
     const [wx, wy] = this.camera.screenToWorld(sx, sy);
     let best = null;
     for (const p of this.pois) {
