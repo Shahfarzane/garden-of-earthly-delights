@@ -119,8 +119,9 @@ export class Shutters {
     const half = (cx1 - cx0) / 2, h = cy1 - cy0;
     const wL = half + (lx1 - lx0 - half) * e, wR = half + (rx1 - rx0 - half) * e;
     const dL = (lx1 - cx0) * e, dR = (rx0 - cx1) * e;
-    // shut, they are the painting the fixed frame shows: clipped to its opening as the camera zooms
-    if (this.state === 'closed') { const O = this.camera.opening(); this.root.style.clipPath = `inset(${O.y0}px ${this.camera.w - O.x1}px ${this.camera.h - O.y1}px ${O.x0}px)`; }
+    // shut, they are the painting the fixed frame shows: clipped to its opening as the camera zooms;
+    // inside a hugging frame they swing behind it too
+    if (this.state === 'closed' || this.camera.hug) { const O = this.camera.opening(); this.root.style.clipPath = `inset(${O.y0}px ${this.camera.w - O.x1}px ${this.camera.h - O.y1}px ${O.x0}px)`; }
     else this.root.style.clipPath = '';
     this.root.style.perspective = `${Math.round((cx1 - cx0) * 2.4)}px`;
     this.root.style.perspectiveOrigin = `${(cx0 + cx1) / 2}px ${(cy0 + cy1) / 2}px`;

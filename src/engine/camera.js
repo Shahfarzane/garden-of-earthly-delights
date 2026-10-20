@@ -6,7 +6,8 @@
 // the frame and the board around it stay drawn at that rest view whatever the camera does. The
 // camera zooms in from rest, never out of it, and is clamped so the frame's opening (the rest
 // view of `framed`: the open triptych, or the centre panel with the wings shut) only ever shows
-// painting.
+// painting. On an upright phone the frame hugs the box instead and the painting covers its
+// opening, cropped at rest to the centre panel's middle (Shahin, 2026-10-20).
 import { WORLD_W, WORLD_H } from '../world.js';
 
 const MAX_SCALE = 2.0; // CSS px per world px: deep brushwork
@@ -26,6 +27,7 @@ export class Camera {
     this.painting = { x0: 0, y0: 0, x1: WORLD_W, y1: WORLD_H }; // the framed triptych, world px
     this.framed = this.painting;
     this.box = null; // screen rect the framed painting fills at rest; null: the whole screen
+    this.hug = false; // the frame is the box's edge, the painting cropped inside it
     this.rest = { cx: this.cx, cy: this.cy, scale: this.scale };
   }
 
@@ -40,13 +42,16 @@ export class Camera {
 
   // The triptych's painted rect, and the screen rect it rests in.
   setPainting(rect) { this.painting = rect; this.framed = rect; this.layout(); }
-  setBox(box) { this.box = box; this.layout(); }
+  setBox(box, hug = false) { this.box = box; this.hug = hug; this.layout(); }
   // What the opening shows: the triptych, or only the centre panel while the wings are shut.
   setFramed(rect) { this.framed = rect; this.clamp(); this.emit(); }
 
   layout() {
     const P = this.painting, b = this.box || { x0: 0, y0: 0, x1: this.w, y1: this.h };
-    const s = Math.min((b.x1 - b.x0) / (P.x1 - P.x0 + 2 * FRAME_W), (b.y1 - b.y0) / (P.y1 - P.y0 + 2 * FRAME_W));
+    const sx = (b.x1 - b.x0) / (P.x1 - P.x0 + 2 * FRAME_W), sy = (b.y1 - b.y0) / (P.y1 - P.y0 + 2 * FRAME_W);
+    // hugging, the triptych fills the opening's height and is cropped at the sides, centred on the
+    // centre panel's middle: the cavalcade round the Pool of Youth just fits a phone's width
+    const s = this.hug ? Math.max(sx, sy) : Math.min(sx, sy);
     this.rest = {
       scale: s,
       cx: (P.x0 + P.x1) / 2 - ((b.x0 + b.x1) / 2 - this.w / 2) / s,
@@ -59,8 +64,9 @@ export class Camera {
 
   fit() { this.cx = this.rest.cx; this.cy = this.rest.cy; this.scale = this.rest.scale; }
 
-  // The frame's opening on screen: the rest view of the framed rect.
+  // The frame's opening on screen: the rest view of the framed rect, or inside the hugging frame.
   opening() {
+    if (this.hug) { const b = this.box, f = FRAME_W * this.rest.scale; return { x0: b.x0 + f, y0: b.y0 + f, x1: b.x1 - f, y1: b.y1 - f }; }
     const r = this.rest, F = this.framed;
     return {
       x0: (F.x0 - r.cx) * r.scale + this.w / 2, y0: (F.y0 - r.cy) * r.scale + this.h / 2,

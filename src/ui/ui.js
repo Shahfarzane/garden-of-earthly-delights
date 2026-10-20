@@ -92,7 +92,7 @@ export class UI {
     this.zoom.append(
       lz('−', () => this.camera.zoomAt(1 / 1.8, this.camera.w / 2, this.camera.h / 2), { class: 'lz square', 'aria-label': 'Zoom out', title: 'Zoom out (-)' }),
       lz('+', () => this.camera.zoomAt(1.8, this.camera.w / 2, this.camera.h / 2), { class: 'lz square', 'aria-label': 'Zoom in', title: 'Zoom in (+)' }),
-      lz('Whole painting', () => this.camera.flyTo(WORLD_W / 2, WORLD_H / 2, this.camera.fitScale), { title: 'Whole painting (0)' }),
+      (this.homeBtn = lz('Whole painting', () => this.camera.flyTo(WORLD_W / 2, WORLD_H / 2, this.camera.fitScale), { title: 'Whole painting (0)' })),
     );
 
     // menu: the Mirage index, then how the painting shows
@@ -165,7 +165,11 @@ export class UI {
       const cs = getComputedStyle(document.documentElement);
       const margin = parseFloat(cs.getPropertyValue('--margin')), band = parseFloat(cs.getPropertyValue('--nav-h'));
       document.documentElement.style.setProperty('--nav-bottom', `${top}px`);
-      this.camera.setBox({ x0: margin, y0: top, x1: window.innerWidth - margin, y1: window.innerHeight - band });
+      // held upright, a phone's frame hugs the screen and the painting is cropped inside it
+      const hug = window.innerWidth <= 768 && window.innerHeight > window.innerWidth;
+      this.camera.setBox({ x0: margin, y0: top, x1: window.innerWidth - margin, y1: window.innerHeight - band }, hug);
+      this.homeBtn.textContent = hug ? 'Centre' : 'Whole painting';
+      this.homeBtn.title = hug ? 'Back to the centre (0)' : 'Whole painting (0)';
     };
     const navs = new ResizeObserver(layout);
     navs.observe(this.crumbs);

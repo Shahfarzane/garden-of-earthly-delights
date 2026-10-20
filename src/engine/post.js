@@ -14,7 +14,8 @@ uniform sampler2D u_fx;
 uniform vec2 u_view;       // physical px
 uniform vec3 u_cam;        // cx, cy (world), k = physical px per world px
 uniform vec3 u_rest;       // the same at rest: the frame and the board stay drawn here (camera.js)
-uniform vec4 u_framed;     // x0, y0, x1, y1 world: the rect the frame's opening shows
+uniform vec4 u_open;       // the frame's opening, physical px, y down (camera.js)
+uniform float u_hug;       // 1: the frame is the screen's edge, round a cropped painting (upright phones)
 uniform float u_time;
 uniform float u_age;       // craquelure + varnish amount 0..1
 uniform float u_life;      // animation amount 0..1
@@ -164,8 +165,17 @@ void main() {
   bool closed = u_hideWings > 0.5;
   // the frame stays where it rests: outside its opening, draw it and the board at rest
   vec2 wr = u_rest.xy + (sp - u_view * 0.5) / u_rest.z;
-  vec4 F = u_framed;
-  if (wr.x < F.x || wr.x > F.z || wr.y < F.y || wr.y > F.w) { o = vec4(surround(wr, u_rest.z, closed), 1.0); return; }
+  vec4 F = u_open;
+  if (sp.x < F.x || sp.x > F.z || sp.y < F.y || sp.y > F.w) {
+    if (u_hug > 0.5) {
+      // a plain frame round the opening, measured in world px at rest like the others
+      vec2 q = sp / u_rest.z;
+      float a;
+      vec3 fc = frame(q, F / u_rest.z, 1500.0, a);
+      o = vec4(mix(board(q, u_rest.z), fc, a), 1.0);
+    } else o = vec4(surround(wr, u_rest.z, closed), 1.0);
+    return;
+  }
 
   vec2 w = u_cam.xy + (sp - u_view * 0.5) / u_cam.z;         // world px
   float k = u_cam.z;
@@ -315,7 +325,7 @@ void main() {
   }
   // shading under the frame's lip: along the fixed opening, and along the inner edges of the
   // wings, which move with the painting
-  float lip = min(min(wr.x - F.x, F.z - wr.x), min(wr.y - F.y, F.w - wr.y));
+  float lip = min(min(sp.x - F.x, F.z - sp.x), min(sp.y - F.y, F.w - sp.y)) / u_rest.z;
   col *= mix(0.55, 1.0, smoothstep(0.0, 380.0, lip));
   vec4 R = u_panels[pi];
   float inner = 1e9;
@@ -425,7 +435,9 @@ export class Post {
     gl.uniform2f(u.u_view, scene.w, scene.h);
     gl.uniform3f(u.u_cam, c.cx, c.cy, c.scale * info.dpr);
     gl.uniform3f(u.u_rest, c.rest.cx, c.rest.cy, c.rest.scale * info.dpr);
-    gl.uniform4f(u.u_framed, c.framed.x0, c.framed.y0, c.framed.x1, c.framed.y1);
+    const O = c.opening(), d = info.dpr;
+    gl.uniform4f(u.u_open, O.x0 * d, O.y0 * d, O.x1 * d, O.y1 * d);
+    gl.uniform1f(u.u_hug, c.hug ? 1 : 0);
     gl.uniform1f(u.u_time, info.time);
     gl.uniform1f(u.u_age, this.age);
     gl.uniform1f(u.u_life, this.fx ? this.life : 0);
