@@ -163,7 +163,9 @@ export class UI {
     this.setSoundUI();
     // panels and the drawer start under the navbar, which is taller where its buttons wrap
     const navBottom = () => document.documentElement.style.setProperty('--nav-bottom', `${Math.max(this.crumbs.offsetHeight, this.bar.offsetHeight)}px`);
-    new ResizeObserver(navBottom).observe(this.bar);
+    const navs = new ResizeObserver(navBottom);
+    navs.observe(this.crumbs);
+    navs.observe(this.bar);
     navBottom();
     window.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
