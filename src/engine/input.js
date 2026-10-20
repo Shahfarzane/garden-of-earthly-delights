@@ -78,7 +78,7 @@ export function attachInput(el, camera, { onTap, onActivity, isEnabled = () => t
   // Wheel and trackpad gestures are handled on the window, whatever is under the pointer:
   // a pinch must never fall through to the browser's own page zoom. Scrollable panels
   // (the story text, popovers) keep plain scrolling.
-  const scrollsItself = (t) => t instanceof Element && t.closest('.story, .pop, .minimap');
+  const scrollsItself = (t) => t instanceof Element && t.closest('.story, .panel, .minimap');
   window.addEventListener('wheel', (e) => {
     const pinch = e.ctrlKey || e.metaKey;
     if (!pinch && scrollsItself(e.target)) return;
