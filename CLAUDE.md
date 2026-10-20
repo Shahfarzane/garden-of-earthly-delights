@@ -15,7 +15,7 @@ Nothing on screen may be a decoded photograph of the painting. The scans feed on
 
 ## Design reference
 
-- The interface follows Mirage, Shahin's site for every painting he repaints (klim-paintings, a private repository, at `~/Code/Projects/klim-paintings` on his Mac), whose layout is taken from Klim Type Foundry's family pages (Shahin's call, 2026-10-20). Its tokens are copied with file and line citations at the top of `src/style.css`: black ground, colour mixes `#e2e2e2` to `#1c1c1c`, type 14/16/18/24/36/48 stepping down per breakpoint, spacing over a 1680/768/430 basis, 12/6 columns, 10px gutter, 20/10px margins, 28px lozenges 5px apart, 2px corners. Values were checked against its running dev server; check again there before changing them.
+- The interface follows Mirage, Shahin's site for every painting he repaints (klim-paintings, a private repository), whose layout is taken from Klim Type Foundry's family pages (Shahin's call, 2026-10-20). Its tokens are copied with file and line citations at the top of `src/style.css`: black ground, colour mixes `#e2e2e2` to `#1c1c1c`, type 14/16/18/24/36/48 stepping down per breakpoint, spacing over a 1680/768/430 basis, 12/6 columns, 10px gutter, 20/10px margins, 28px lozenges 5px apart, 2px corners. Values were checked against its running dev server; check again there before changing them.
 - Fonts: Söhne by Klim (Buch, Kursiv, Halbfett, Mono, Ikon), as Mirage, in `fonts/` (untracked and licensed: Shahin handles the licence, and the public repo must not contain them).
 
 ## Invariants
