@@ -28,6 +28,11 @@ window.addEventListener('resize', size);
 size();
 
 const scene = await (await fetch(`${import.meta.env.BASE_URL}data/scene.json`)).json();
+// the framed triptych: its panels, inset where the frames sit over the scan's gaps (post.js)
+camera.setPainting({
+  x0: Math.min(...scene.panels.map((p) => p.x0)) + 140, y0: Math.min(...scene.panels.map((p) => p.y0)) + 140,
+  x1: Math.max(...scene.panels.map((p) => p.x1)) - 140, y1: Math.max(...scene.panels.map((p) => p.y1)) - 140,
+});
 await renderer.init();
 const post = new Post(renderer.gl, renderer.quad, scene);
 renderer.post = post;

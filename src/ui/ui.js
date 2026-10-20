@@ -157,12 +157,21 @@ export class UI {
 
     r.append(this.markerLayer, this.mini, this.zoom, this.story, this.crumbs, this.bar, this.soundPop, this.strokesPop, this.menu);
     this.setSoundUI();
-    // panels and the drawer start under the navbar, which is taller where its buttons wrap
-    const navBottom = () => document.documentElement.style.setProperty('--nav-bottom', `${Math.max(this.crumbs.offsetHeight, this.bar.offsetHeight)}px`);
-    const navs = new ResizeObserver(navBottom);
+    // panels and the drawer start under the navbar, which is taller where its buttons wrap; the
+    // framed painting rests in the screen under it, inside the margins, above a band as tall as
+    // the navbar for the zoom buttons (as Mirage's painting box sits under its navbar)
+    const layout = () => {
+      const top = Math.max(this.crumbs.offsetHeight, this.bar.offsetHeight);
+      const cs = getComputedStyle(document.documentElement);
+      const margin = parseFloat(cs.getPropertyValue('--margin')), band = parseFloat(cs.getPropertyValue('--nav-h'));
+      document.documentElement.style.setProperty('--nav-bottom', `${top}px`);
+      this.camera.setBox({ x0: margin, y0: top, x1: window.innerWidth - margin, y1: window.innerHeight - band });
+    };
+    const navs = new ResizeObserver(layout);
     navs.observe(this.crumbs);
     navs.observe(this.bar);
-    navBottom();
+    window.addEventListener('resize', layout);
+    layout();
     window.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (this.openPop) { const b = this.trigger(this.openPop); this.togglePop(this.openPop); b.focus(); } else this.closeStory();
@@ -337,7 +346,7 @@ export class UI {
 
   // Tap on the painting: open the smallest story circle under the finger.
   tap(sx, sy) {
-    if (!this.enabled || this.closed || !this.storiesOn) return false;
+    if (!this.enabled || this.closed || !this.storiesOn || !this.camera.inOpening(sx, sy)) return false;
     const [wx, wy] = this.camera.screenToWorld(sx, sy);
     let best = null;
     for (const p of this.pois) {
@@ -353,11 +362,13 @@ export class UI {
     if (!this.enabled) return;
     const c = this.camera;
     const minDim = Math.min(c.w, c.h);
+    const O = c.opening();
     for (const m of this.markers) {
       const [sx, sy] = c.worldToScreen(m.p.x, m.p.y);
       const rpx = m.p.r * c.scale;
-      // quiet: only once you are close enough for the story to be legible, gone when inside it
-      const show = this.storiesOn && rpx > 70 && rpx < minDim * 0.8 && sx > -20 && sy > -20 && sx < c.w + 20 && sy < c.h + 20;
+      // quiet: only once you are close enough for the story to be legible, gone when inside it,
+      // and only inside the frame's opening
+      const show = this.storiesOn && rpx > 70 && rpx < minDim * 0.8 && sx > O.x0 + 6 && sy > O.y0 + 6 && sx < O.x1 - 6 && sy < O.y1 - 6;
       if (show !== m.shown) { m.b.style.display = show ? '' : 'none'; m.shown = show; }
       if (show) m.b.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
     }

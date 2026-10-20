@@ -1,9 +1,17 @@
-// Pan/zoom camera over the painting, with inertia, smooth zoom, elastic edges and
-// van Wijk-Nuij flights to stories. Units: world px (source scan), CSS px on screen.
+// Pan/zoom camera over the painting, with inertia, smooth zoom and van Wijk-Nuij flights to
+// stories. Units: world px (source scan), CSS px on screen.
+//
+// The frame is fixed to the screen and only the painting moves inside it (Shahin, 2026-10-20).
+// At rest the painting and its frame fill `box`, the screen under the navbar inside the margins;
+// the frame and the board around it stay drawn at that rest view whatever the camera does. The
+// camera zooms in from rest, never out of it, and is clamped so the frame's opening (the rest
+// view of `framed`: the open triptych, or the centre panel with the wings shut) only ever shows
+// painting.
 import { WORLD_W, WORLD_H } from '../world.js';
 
 const MAX_SCALE = 2.0; // CSS px per world px: deep brushwork
 const RHO = 1.4;
+export const FRAME_W = 1500; // the frame's width, world px (post.js)
 
 export class Camera {
   constructor() {
@@ -15,19 +23,51 @@ export class Camera {
     this.flight = null;
     this.dragging = false;
     this.listeners = new Set();
+    this.painting = { x0: 0, y0: 0, x1: WORLD_W, y1: WORLD_H }; // the framed triptych, world px
+    this.framed = this.painting;
+    this.box = null; // screen rect the framed painting fills at rest; null: the whole screen
+    this.rest = { cx: this.cx, cy: this.cy, scale: this.scale };
   }
 
-  get fitScale() { return Math.min(this.w / (WORLD_W * 1.04), this.h / (WORLD_H * 1.06)); }
-  get minScale() { return this.fitScale * 0.1; } // an infinite board: the triptych can shrink to an object on it
+  get fitScale() { return this.rest.scale; }
+  get minScale() { return this.rest.scale; }
   get maxScale() { return MAX_SCALE; }
 
   resize(w, h) {
     this.w = Math.max(1, w); this.h = Math.max(1, h);
-    if (!this.interacted || !(this.scale >= this.minScale)) this.fit();
-    this.clamp(true);
+    this.layout();
   }
 
-  fit() { this.cx = WORLD_W / 2; this.cy = WORLD_H / 2; this.scale = this.fitScale; }
+  // The triptych's painted rect, and the screen rect it rests in.
+  setPainting(rect) { this.painting = rect; this.framed = rect; this.layout(); }
+  setBox(box) { this.box = box; this.layout(); }
+  // What the opening shows: the triptych, or only the centre panel while the wings are shut.
+  setFramed(rect) { this.framed = rect; this.clamp(); this.emit(); }
+
+  layout() {
+    const P = this.painting, b = this.box || { x0: 0, y0: 0, x1: this.w, y1: this.h };
+    const s = Math.min((b.x1 - b.x0) / (P.x1 - P.x0 + 2 * FRAME_W), (b.y1 - b.y0) / (P.y1 - P.y0 + 2 * FRAME_W));
+    this.rest = {
+      scale: s,
+      cx: (P.x0 + P.x1) / 2 - ((b.x0 + b.x1) / 2 - this.w / 2) / s,
+      cy: (P.y0 + P.y1) / 2 - ((b.y0 + b.y1) / 2 - this.h / 2) / s,
+    };
+    if (!this.interacted || !(this.scale >= this.minScale)) this.fit();
+    this.clamp();
+    this.emit();
+  }
+
+  fit() { this.cx = this.rest.cx; this.cy = this.rest.cy; this.scale = this.rest.scale; }
+
+  // The frame's opening on screen: the rest view of the framed rect.
+  opening() {
+    const r = this.rest, F = this.framed;
+    return {
+      x0: (F.x0 - r.cx) * r.scale + this.w / 2, y0: (F.y0 - r.cy) * r.scale + this.h / 2,
+      x1: (F.x1 - r.cx) * r.scale + this.w / 2, y1: (F.y1 - r.cy) * r.scale + this.h / 2,
+    };
+  }
+  inOpening(sx, sy) { const O = this.opening(); return sx >= O.x0 && sx <= O.x1 && sy >= O.y0 && sy <= O.y1; }
 
   screenToWorld(sx, sy) {
     return [this.cx + (sx - this.w / 2) / this.scale, this.cy + (sy - this.h / 2) / this.scale];
@@ -35,23 +75,19 @@ export class Camera {
   worldToScreen(wx, wy) {
     return [(wx - this.cx) * this.scale + this.w / 2, (wy - this.cy) * this.scale + this.h / 2];
   }
-  // Visible world rect.
+  // Visible world rect: what the frame's opening shows.
   view() {
-    const hw = this.w / 2 / this.scale, hh = this.h / 2 / this.scale;
-    return { x0: this.cx - hw, y0: this.cy - hh, x1: this.cx + hw, y1: this.cy + hh };
+    const O = this.opening();
+    const [x0, y0] = this.screenToWorld(O.x0, O.y0), [x1, y1] = this.screenToWorld(O.x1, O.y1);
+    return { x0, y0, x1, y1 };
   }
 
   panBy(dx, dy) {
     this.flight = null;
     this.interacted = true;
-    let fx = 1, fy = 1;
-    if (this.dragging) { // rubber band past the edges
-      const o = this.overshoot();
-      fx = 1 / (1 + Math.abs(o.x) * this.scale / 120);
-      fy = 1 / (1 + Math.abs(o.y) * this.scale / 120);
-    }
-    this.cx -= dx / this.scale * fx;
-    this.cy -= dy / this.scale * fy;
+    this.cx -= dx / this.scale;
+    this.cy -= dy / this.scale;
+    this.clamp();
     this.emit();
   }
 
@@ -60,7 +96,7 @@ export class Camera {
     this.interacted = true;
     const base = this.zoomTarget ? this.zoomTarget.scale : this.scale;
     const target = Math.max(this.minScale, Math.min(this.maxScale, base * factor));
-    if (!smooth) { this.applyZoom(target, sx, sy); this.zoomTarget = null; return; }
+    if (!smooth) { this.applyZoom(target, sx, sy); this.zoomTarget = null; this.clamp(); this.emit(); return; }
     this.zoomTarget = { scale: target, ax: sx, ay: sy };
   }
 
@@ -103,22 +139,21 @@ export class Camera {
     this.flight = { t: 0, duration, path, done: opts.done };
   }
 
-  // The board is unbounded in feel: the view centre roams freely within a wide margin around
-  // the painting and is only pulled back (elastically) when it wanders far beyond it.
-  overshoot() {
-    const mx = WORLD_W * 0.9, my = WORLD_H * 1.2;
-    const ox = this.cx < -mx ? this.cx + mx : this.cx > WORLD_W + mx ? this.cx - WORLD_W - mx : 0;
-    const oy = this.cy < -my ? this.cy + my : this.cy > WORLD_H + my ? this.cy - WORLD_H - my : 0;
-    return { x: ox, y: oy };
-  }
-
-  clamp(hard = false, dt = 0.016) {
-    const o = this.overshoot();
-    if (!o.x && !o.y) return;
-    const k = hard ? 1 : 1 - Math.exp(-dt * 12);
-    this.cx -= o.x * k; this.cy -= o.y * k;
-    if (o.x) this.vx *= 0.5;
-    if (o.y) this.vy *= 0.5;
+  // Keep the scale between rest and the deepest zoom, and the opening on the framed rect.
+  // Returns whether the centre had to move.
+  clamp() {
+    this.scale = Math.max(this.minScale, Math.min(this.maxScale, this.scale));
+    const O = this.opening(), F = this.framed, s = this.scale;
+    const fit = (c, f0, f1, o0, o1, mid) => {
+      const lo = f0 - (o0 - mid) / s, hi = f1 - (o1 - mid) / s;
+      return lo >= hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, c));
+    };
+    const cx = fit(this.cx, F.x0, F.x1, O.x0, O.x1, this.w / 2), cy = fit(this.cy, F.y0, F.y1, O.y0, O.y1, this.h / 2);
+    const moved = cx !== this.cx || cy !== this.cy;
+    if (cx !== this.cx) this.vx = 0;
+    if (cy !== this.cy) this.vy = 0;
+    this.cx = cx; this.cy = cy;
+    return moved;
   }
 
   update(dt) {
@@ -130,6 +165,7 @@ export class Camera {
       const e = s < 0.5 ? 4 * s * s * s : 1 - Math.pow(-2 * s + 2, 3) / 2;
       const [x, y, w] = f.path(e);
       this.cx = x; this.cy = y; this.scale = this.w / w;
+      this.clamp(); // the flight's zoom-out arc stops at rest
       moved = true;
       if (s >= 1) { this.flight = null; f.done?.(); }
     } else {
@@ -147,11 +183,7 @@ export class Camera {
         this.vx *= damp; this.vy *= damp;
         moved = true;
       } else if (!this.dragging) { this.vx = this.vy = 0; }
-      if (!this.dragging) {
-        const before = this.cx + this.cy;
-        this.clamp(false, dt);
-        if (this.cx + this.cy !== before) moved = true;
-      }
+      if (this.clamp()) moved = true;
     }
     if (moved) this.emit();
     return moved;
