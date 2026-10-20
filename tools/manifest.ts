@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT, OUT, FULL_Z } from './common.ts';
 import { RECORD_BYTES } from '../src/shared/strokeModel.ts';
+import type { StrokeStats } from '../src/scene.ts';
 
 const dir = path.join(OUT, 'strokes');
 const levels = fs.readdirSync(dir).filter((n) => /^\d+$/.test(n)).map(Number).sort((a, b) => a - b);
@@ -34,7 +35,7 @@ if (fs.existsSync(extDir)) {
 }
 const base = levels.filter((z) => z <= FULL_Z).reduce((a, z) => a + perLevel[z], 0);
 const deep = levels.filter((z) => z > FULL_Z).reduce((a, z) => a + perLevel[z], 0);
-const stats = { total: base + deep, base, deep, exterior, perLevel };
+const stats: StrokeStats = { total: base + deep, base, deep, exterior, perLevel };
 fs.writeFileSync(path.join(dir, 'stats.json'), JSON.stringify(stats));
 console.log(Object.entries(manifest.deep).map(([z, l]) => `z${z}: ${l.length} tiles`).join(', '));
 console.log(JSON.stringify(stats));

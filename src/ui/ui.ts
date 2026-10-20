@@ -2,35 +2,101 @@
 // the Mirage index, the painting's buttons and the menu top right, zoom bottom right, quiet story
 // markers, a story drawer, the sound and strokes panels and a minimap.
 import { WORLD_W, WORLD_H } from '../world.ts';
+import type { Camera } from '../engine/camera.ts';
+import type { Post } from '../engine/post.ts';
+import type { Renderer } from '../engine/renderer.ts';
+import type { Tile } from '../engine/tiles.ts';
+import type { SoundMode } from '../audio/soundscape.ts';
+import type { PanelId, Poi, Scene, StrokeStats } from '../scene.ts';
 
-// The Mirage index: the root of the site the Garden is a path of (site.config.js).
+// The Mirage index: the root of the site the Garden is a path of (site.config.ts).
 export const MIRAGE_URL = '/';
 const SOURCE_URL = 'https://github.com/Shahfarzane/garden-of-earthly-delights';
 
 // the icons are characters of Söhne's icon face (Mirage's Icon.tsx)
-const icon = (glyph) => `<i class="icon" aria-hidden="true">${glyph}</i>`;
+const icon = (glyph: string) => `<i class="icon" aria-hidden="true">${glyph}</i>`;
 
-const PANEL_NAME = { eden: 'Paradise, left wing', garden: 'The garden, centre panel', hell: 'Hell, right wing' };
-const SOUND_NOTE = {
+type SoundChoice = 'off' | SoundMode;
+type PopName = 'sound' | 'strokes' | 'menu';
+
+// What the app does when the interface asks (main.ts).
+export interface UIHooks {
+  onSound?(on: boolean): void | Promise<void>;
+  onSoundMode?(mode: SoundMode): void;
+  onStoryOpen?(p: Poi): void;
+  onStoryClose?(): void;
+  onMotion?(on: boolean): void;
+  onWings?(): void | Promise<void>;
+  onStrokeView?(on: boolean): void;
+  extraStrokes?(): number; // strokes painted outside the tile atlas (the shutters)
+}
+
+const PANEL_NAME: Record<PanelId, string> = { eden: 'Paradise, left wing', garden: 'The garden, centre panel', hell: 'Hell, right wing' };
+const SOUND_NOTE: Record<SoundChoice, string> = {
   off: 'No sound.',
   nature: 'Birds, water, wind and fire where you look.',
   period: 'Lute, recorder and viol, about 1500, with the nature sounds.',
 };
-const fmt = (n) => Math.round(n).toLocaleString('en-US');
+const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
 
-function el(tag, attrs = {}, html = '') {
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string | number | EventListener> = {}, html = ''): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
-    if (k === 'class') e.className = v;
-    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
-    else e.setAttribute(k, v);
+    if (k === 'class') e.className = v as string;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v as EventListener);
+    else e.setAttribute(k, String(v));
   }
   if (html) e.innerHTML = html;
   return e;
 }
 
+// A story marker: its point, its button, and whether it shows.
+interface Marker { p: Poi; b: HTMLButtonElement; shown: boolean }
+
 export class UI {
-  constructor({ root, camera, renderer, post, scene, hooks = {} }) {
+  root: HTMLElement;
+  camera: Camera;
+  renderer: Renderer;
+  post: Post;
+  scene: Scene;
+  hooks: UIHooks;
+  pois: Poi[]; // the stories with markers (not the panel overviews)
+  byId: Map<string, Poi>;
+  current: Poi | null; // the open story
+  storiesOn: boolean;
+  soundOn: boolean;
+  soundMode: SoundMode;
+  strokeView: boolean;
+  enabled: boolean;
+  closed: boolean;
+  stats: StrokeStats | null;
+  openPop?: PopName | null;
+  dismissed?: number; // when a press outside last closed a panel
+  linkChecked?: boolean;
+  lastStats?: number;
+  miniAway?: boolean;
+  // made by build()
+  markerLayer!: HTMLDivElement;
+  markers!: Marker[];
+  story!: HTMLElement;
+  crumbs!: HTMLElement;
+  bar!: HTMLElement;
+  wingsBtn!: HTMLButtonElement;
+  strokesBtn!: HTMLButtonElement;
+  soundBtn!: HTMLButtonElement;
+  menuBtn!: HTMLButtonElement;
+  homeBtn!: HTMLButtonElement;
+  zoom!: HTMLDivElement;
+  menu!: HTMLDivElement;
+  item!: Record<string, HTMLElement>; // the menu's toggles by data-k
+  soundPop!: HTMLDivElement;
+  strokesPop!: HTMLDivElement;
+  strokeSwitch!: HTMLButtonElement;
+  mini!: HTMLDivElement;
+  miniCanvas!: HTMLCanvasElement;
+  miniImg!: HTMLCanvasElement | null;
+
+  constructor({ root, camera, renderer, post, scene, hooks = {} }: { root: HTMLElement; camera: Camera; renderer: Renderer; post: Post; scene: Scene; hooks?: UIHooks }) {
     this.root = root;
     this.camera = camera;
     this.renderer = renderer;
@@ -51,7 +117,7 @@ export class UI {
     fetch(`${import.meta.env.BASE_URL}data/strokes/stats.json`).then((r) => (r.ok ? r.json() : null)).then((s) => { this.stats = s; }).catch(() => {});
   }
 
-  build() {
+  build(): void {
     const r = this.root;
     // markers
     this.markerLayer = el('div', { class: 'markers' });
@@ -67,7 +133,7 @@ export class UI {
       <header><p class="where"></p><button class="lz close" type="button" title="Close (Esc)">Close</button></header>
       <h2 id="story-title"></h2>
       <div class="body" tabindex="0"></div>`;
-    this.story.querySelector('.close').addEventListener('click', () => this.closeStory());
+    this.story.querySelector('.close')!.addEventListener('click', () => this.closeStory());
 
     // navbar: breadcrumbs on the left; the painting's buttons and the menu on the right
     this.crumbs = el('nav', { class: 'crumbs', 'aria-label': 'Breadcrumbs' }, `<ol>
@@ -75,7 +141,7 @@ export class UI {
       <li><a class="lz" href="${import.meta.env.BASE_URL}" aria-current="page"><span>The Garden of Earthly Delights</span></a></li></ol>`);
     this.bar = el('nav', { class: 'bar', 'aria-label': 'Painting' });
     const controls = el('div', { class: 'controls', role: 'toolbar', 'aria-label': 'Painting controls' });
-    const lz = (html, fn, attrs = {}) => {
+    const lz = (html: string, fn: EventListener, attrs: Record<string, string> = {}) => {
       const b = el('button', { class: 'lz', type: 'button', ...attrs }, html);
       b.addEventListener('click', fn);
       return b;
@@ -103,7 +169,7 @@ export class UI {
       <button class="lz out" type="button" role="menuitemcheckbox" data-k="motion"><span>Living painting</span><span class="state"></span></button>
       <button class="lz out" type="button" role="menuitemcheckbox" data-k="age"><span>Varnish and cracks</span><span class="state"></span></button>
       <button class="lz out" type="button" role="menuitemcheckbox" data-k="full"><span>Full screen</span><span class="state"></span></button>`;
-    this.item = Object.fromEntries([...this.menu.querySelectorAll('[data-k]')].map((b) => [b.dataset.k, b]));
+    this.item = Object.fromEntries([...this.menu.querySelectorAll<HTMLElement>('[data-k]')].map((b) => [b.dataset.k!, b]));
     this.item.stories.addEventListener('click', () => this.setStories(!this.storiesOn));
     this.item.motion.addEventListener('click', () => this.setMotion(this.post.life < 0.5));
     this.item.age.addEventListener('click', () => this.setAge(this.post.age < 0.5));
@@ -111,7 +177,7 @@ export class UI {
     document.addEventListener('fullscreenchange', () => this.check('full', !!document.fullscreenElement));
     this.menu.addEventListener('keydown', (e) => this.listKeys(e, '[role^="menuitem"]'));
     // the post pass may start still (prefers-reduced-motion)
-    for (const [k, on] of [['stories', true], ['motion', this.post.life > 0.5], ['age', this.post.age > 0.5], ['full', false]]) this.check(k, on);
+    for (const [k, on] of [['stories', true], ['motion', this.post.life > 0.5], ['age', this.post.age > 0.5], ['full', false]] satisfies [string, boolean][]) this.check(k, on);
 
     // sound panel
     this.soundPop = el('div', { class: 'panel', role: 'dialog', 'aria-label': 'Sound', hidden: '' });
@@ -120,7 +186,7 @@ export class UI {
         <button class="lz" type="button" role="radio" data-mode="nature">Nature</button>
         <button class="lz" type="button" role="radio" data-mode="period">Period music</button>
       </div><p class="note"></p>`;
-    for (const o of this.soundPop.querySelectorAll('[role="radio"]')) o.addEventListener('click', () => this.chooseSound(o.dataset.mode));
+    for (const o of this.soundPop.querySelectorAll<HTMLElement>('[role="radio"]')) o.addEventListener('click', () => this.chooseSound(o.dataset.mode as SoundChoice));
     this.soundPop.addEventListener('keydown', (e) => this.listKeys(e, '[role="radio"]'));
     // strokes panel
     this.strokesPop = el('div', { class: 'panel strokes', role: 'dialog', 'aria-label': 'Brush strokes', hidden: '' });
@@ -136,7 +202,7 @@ export class UI {
       <button class="lz" type="button" aria-pressed="false">Show each stroke in its own colour</button>
       <div class="sep" role="separator"></div>
       <a class="lz out" href="${SOURCE_URL}" target="_blank" rel="noopener"><span>Source on GitHub, MIT licence</span>${icon('↗')}</a>`;
-    this.strokeSwitch = this.strokesPop.querySelector('[aria-pressed]');
+    this.strokeSwitch = this.strokesPop.querySelector<HTMLButtonElement>('[aria-pressed]')!;
     this.strokeSwitch.addEventListener('click', () => this.setStrokeView(!this.strokeView));
 
     // minimap
@@ -144,7 +210,7 @@ export class UI {
     this.miniCanvas = el('canvas', { width: 400, height: 228, 'aria-label': 'Overview map; click to move there' });
     this.mini.append(this.miniCanvas);
     this.miniImg = null;
-    const miniNav = (e, smooth) => {
+    const miniNav = (e: PointerEvent, smooth: boolean) => {
       const rc = this.miniCanvas.getBoundingClientRect();
       const x = (e.clientX - rc.left) / rc.width * WORLD_W, y = (e.clientY - rc.top) / rc.height * WORLD_H;
       if (smooth) this.camera.flyTo(x, y, Math.max(this.camera.scale, this.camera.fitScale * 2.5), { duration: 900 });
@@ -181,20 +247,20 @@ export class UI {
       if (this.openPop) { const b = this.trigger(this.openPop); this.togglePop(this.openPop); b.focus(); } else this.closeStory();
     });
     window.addEventListener('pointerdown', (e) => {
-      if (this.openPop && !e.target.closest('.panel') && !e.target.closest('.bar')) { this.togglePop(this.openPop); this.dismissed = performance.now(); }
+      if (this.openPop && !(e.target as Element).closest('.panel') && !(e.target as Element).closest('.bar')) { this.togglePop(this.openPop); this.dismissed = performance.now(); }
     });
   }
 
   // a menu toggle: its state as a muted value, as in Mirage's information lists
-  check(k, on) {
+  check(k: string, on: boolean): void {
     this.item[k].setAttribute('aria-checked', String(on));
-    this.item[k].querySelector('.state').textContent = on ? 'On' : 'Off';
+    this.item[k].querySelector('.state')!.textContent = on ? 'On' : 'Off';
   }
 
   // arrow keys move between the items of an open list (Menu.tsx, usePopover.ts)
-  listKeys(e, selector) {
-    const items = [...e.currentTarget.querySelectorAll(selector)];
-    const i = items.indexOf(document.activeElement);
+  listKeys(e: KeyboardEvent, selector: string): void {
+    const items = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(selector)];
+    const i = items.indexOf(document.activeElement as HTMLElement);
     let next = -1;
     if (e.key === 'ArrowDown') next = i < 0 ? 0 : Math.min(items.length - 1, i + 1);
     else if (e.key === 'ArrowUp') next = i < 0 ? items.length - 1 : Math.max(0, i - 1);
@@ -203,7 +269,7 @@ export class UI {
     if (next >= 0) { e.preventDefault(); items[next].focus(); }
   }
 
-  setVisible(on) {
+  setVisible(on: boolean): void {
     this.enabled = on;
     for (const n of [this.bar, this.zoom, this.mini, this.markerLayer]) n.style.display = on ? '' : 'none';
     if (on && !this.linkChecked) {
@@ -215,11 +281,11 @@ export class UI {
   }
 
   // ---------- panels ----------
-  trigger(name) { return { sound: this.soundBtn, strokes: this.strokesBtn, menu: this.menuBtn }[name]; }
+  trigger(name: PopName): HTMLButtonElement { return { sound: this.soundBtn, strokes: this.strokesBtn, menu: this.menuBtn }[name]; }
 
-  togglePop(name) {
+  togglePop(name: PopName): void {
     const pops = { sound: this.soundPop, strokes: this.strokesPop, menu: this.menu };
-    for (const [k, pop] of Object.entries(pops)) {
+    for (const [k, pop] of Object.entries(pops) as [PopName, HTMLDivElement][]) {
       const open = k === name && this.openPop !== name;
       pop.hidden = !open;
       const b = this.trigger(k);
@@ -228,36 +294,36 @@ export class UI {
     }
     this.openPop = this.openPop === name ? null : name;
     if (this.openPop === 'strokes') this.updateStats(true);
-    if (this.openPop === 'menu') this.menu.querySelector('[role^="menuitem"]').focus();
+    if (this.openPop === 'menu') this.menu.querySelector<HTMLElement>('[role^="menuitem"]')!.focus();
   }
 
-  chooseSound(mode) {
+  chooseSound(mode: SoundChoice): void {
     if (mode === 'off') { this.soundOn = false; this.hooks.onSound?.(false); }
     else { this.soundMode = mode; this.soundOn = true; this.hooks.onSoundMode?.(mode); this.hooks.onSound?.(true); }
     this.setSoundUI();
   }
-  setSound(on) { this.soundOn = on; this.hooks.onSound?.(on); this.setSoundUI(); }
-  setSoundUI() {
+  setSound(on: boolean): void { this.soundOn = on; this.hooks.onSound?.(on); this.setSoundUI(); }
+  setSoundUI(): void {
     const current = this.soundOn ? this.soundMode : 'off';
-    for (const o of this.soundPop.querySelectorAll('[role="radio"]')) o.setAttribute('aria-checked', String(o.dataset.mode === current));
-    this.soundPop.querySelector('.note').textContent = SOUND_NOTE[current];
+    for (const o of this.soundPop.querySelectorAll<HTMLElement>('[role="radio"]')) o.setAttribute('aria-checked', String(o.dataset.mode === current));
+    this.soundPop.querySelector('.note')!.textContent = SOUND_NOTE[current];
     // on, the lozenge is filled, as Mirage's Sound button
     this.soundBtn.toggleAttribute('data-on', this.soundOn);
     this.soundBtn.setAttribute('aria-label', `Sound: ${{ off: 'off', nature: 'nature', period: 'period music' }[current]}`);
   }
 
-  setStrokeView(on) {
+  setStrokeView(on: boolean): void {
     this.strokeView = on;
     this.strokeSwitch.setAttribute('aria-pressed', String(on));
     this.strokesBtn.toggleAttribute('data-on', on);
     this.hooks.onStrokeView?.(on);
   }
 
-  updateStats(force = false) {
+  updateStats(force = false): void {
     const now = performance.now();
     if (!force && now - (this.lastStats || 0) < 300) return;
     this.lastStats = now;
-    const set = (k, v) => { const n = this.strokesPop.querySelector(`[data-k="${k}"]`); if (n) n.textContent = v; };
+    const set = (k: string, v: string) => { const n = this.strokesPop.querySelector(`[data-k="${k}"]`); if (n) n.textContent = v; };
     const s = this.stats;
     if (s) {
       set('total', fmt(s.total + (s.exterior || 0)));
@@ -272,13 +338,13 @@ export class UI {
   }
 
   // ---------- story ----------
-  openStory(p, { fly = true } = {}) {
+  openStory(p: Poi, { fly = true } = {}): void {
     if (!p || this.closed) return;
     this.current = p;
     const s = this.story;
-    s.querySelector('.where').textContent = PANEL_NAME[p.panel];
-    s.querySelector('h2').textContent = p.title;
-    const body = s.querySelector('.body');
+    s.querySelector('.where')!.textContent = PANEL_NAME[p.panel];
+    s.querySelector('h2')!.textContent = p.title;
+    const body = s.querySelector<HTMLElement>('.body')!;
     body.innerHTML = '';
     for (const para of p.text.split(/\n\s*\n|\n/).map((x) => x.trim()).filter(Boolean)) {
       const pe = el('p'); pe.textContent = para; body.append(pe);
@@ -293,7 +359,7 @@ export class UI {
     this.hooks.onStoryOpen?.(p);
   }
 
-  closeStory() {
+  closeStory(): void {
     if (!this.current) return;
     this.current = null;
     this.story.classList.remove('open');
@@ -306,14 +372,14 @@ export class UI {
 
   // The screen the drawer leaves to the painting: its columns and a margin on each side, or on
   // tablets and phones the sheet at the foot.
-  drawerInset() {
+  drawerInset(): { x: number; y: number } {
     if (!this.current) return { x: 0, y: 0 };
     const margin = parseFloat(getComputedStyle(this.story).right) || 0;
     if (window.innerWidth <= 768) return { x: 0, y: this.story.offsetHeight + margin };
     return { x: this.story.offsetWidth + 2 * margin, y: 0 };
   }
 
-  flyToPoi(p) {
+  flyToPoi(p: Poi): void {
     const c = this.camera;
     const inset = this.drawerInset();
     const aw = c.w - inset.x, ah = c.h - inset.y;
@@ -322,39 +388,39 @@ export class UI {
   }
 
   // ---------- toggles ----------
-  setStories(on) {
+  setStories(on: boolean): void {
     this.storiesOn = on;
     this.check('stories', on);
     this.markerLayer.classList.toggle('hidden', !on);
   }
-  setMotion(on) {
+  setMotion(on: boolean): void {
     this.post.life = on ? 1 : 0;
     this.check('motion', on);
     this.hooks.onMotion?.(on);
   }
-  setAge(on) {
+  setAge(on: boolean): void {
     this.post.age = on ? 1 : 0;
     this.check('age', on);
   }
-  setClosed(closed) {
+  setClosed(closed: boolean): void {
     this.closed = closed;
     this.wingsBtn.title = closed ? 'Open the wings' : 'Close the wings';
     this.wingsBtn.setAttribute('aria-pressed', String(closed));
     this.markerLayer.style.visibility = closed ? 'hidden' : '';
     if (closed) this.closeStory();
   }
-  toggleFullscreen() {
+  toggleFullscreen(): void {
     if (document.fullscreenElement) document.exitFullscreen?.();
     else document.documentElement.requestFullscreen?.();
   }
 
   // Tap on the painting: open the smallest story circle under the finger.
-  tap(sx, sy) {
+  tap(sx: number, sy: number): boolean {
     if (!this.enabled || this.closed || !this.storiesOn || !this.camera.inOpening(sx, sy)) return false;
     // the tap that closed a panel only closes it
     if (performance.now() - (this.dismissed || 0) < 600) return false;
     const [wx, wy] = this.camera.screenToWorld(sx, sy);
-    let best = null;
+    let best: Poi | null = null;
     for (const p of this.pois) {
       const d = Math.hypot(wx - p.x, wy - p.y);
       if (d < p.r * 0.85 && p.r * this.camera.scale > 40 && (!best || p.r < best.r)) best = p;
@@ -364,7 +430,7 @@ export class UI {
   }
 
   // ---------- per frame ----------
-  update() {
+  update(): void {
     if (!this.enabled) return;
     const c = this.camera;
     const minDim = Math.min(c.w, c.h);
@@ -385,8 +451,8 @@ export class UI {
   }
 
   // Minimap painted from the stroke atlas (level-2 tiles), plus the view rectangle.
-  drawMinimap() {
-    const cv = this.miniCanvas, ctx = cv.getContext('2d');
+  drawMinimap(): void {
+    const cv = this.miniCanvas, ctx = cv.getContext('2d')!;
     if (!this.miniImg) this.miniImg = this.captureMini();
     ctx.clearRect(0, 0, cv.width, cv.height);
     if (this.miniImg) ctx.drawImage(this.miniImg, 0, 0, cv.width, cv.height);
@@ -401,10 +467,10 @@ export class UI {
     ctx.strokeRect(x0 + 1, y0 + 1, Math.max(3, x1 - x0 - 2), Math.max(3, y1 - y0 - 2));
   }
 
-  captureMini() {
+  captureMini(): HTMLCanvasElement | null {
     const tiles = this.renderer.tiles;
     if (this.strokeView) return null;
-    const need = [];
+    const need: Tile[] = [];
     for (let y = 0; y < 3; y++) for (let x = 0; x < 5; x++) {
       const t = tiles.tiles.get(`2/${x}/${y}`);
       if (!t || t.state !== 'done') return null;
@@ -423,7 +489,7 @@ export class UI {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     const c = document.createElement('canvas');
     c.width = Math.ceil(WORLD_W / 128); c.height = Math.ceil(WORLD_H / 128);
-    c.getContext('2d').putImageData(img, 0, 0);
+    c.getContext('2d')!.putImageData(img, 0, 0);
     return c;
   }
 }

@@ -2,18 +2,26 @@ import { Camera } from './engine/camera.ts';
 import { attachInput } from './engine/input.ts';
 import { Renderer } from './engine/renderer.ts';
 import { Post } from './engine/post.ts';
-import { UI } from './ui/ui.js';
-import { Shutters } from './ui/shutters.js';
+import { UI } from './ui/ui.ts';
+import { Shutters } from './ui/shutters.ts';
 import { Soundscape } from './audio/soundscape.ts';
 import { LifeLayer } from './living/layer.ts';
 import { Animator } from './living/animator.ts';
 import { RIGS } from './living/rigs.ts';
+import type { Scene } from './scene.ts';
+
+declare global {
+  interface Window {
+    // the running app, for the console and the verification scripts
+    __garden: { camera: Camera; renderer: Renderer; post: Post; scene: Scene; ui: UI; sound: Soundscape; life: LifeLayer; animator: Animator; shutters: Shutters };
+  }
+}
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const canvas = document.getElementById('paint');
-const lifeCanvas = document.getElementById('life');
+const canvas = document.getElementById('paint') as HTMLCanvasElement; // index.html
+const lifeCanvas = document.getElementById('life') as HTMLCanvasElement;
 const camera = new Camera();
-let renderer;
+let renderer: Renderer;
 try { renderer = new Renderer(canvas, camera); } catch (e) {
   // no WebGL2 (old browser, or hardware acceleration switched off): say so plainly
   const p = document.createElement('p');
@@ -27,8 +35,8 @@ function size() { camera.resize(window.innerWidth, window.innerHeight); }
 window.addEventListener('resize', size);
 size();
 
-const scene = await (await fetch(`${import.meta.env.BASE_URL}data/scene.json`)).json();
-// the framed triptych: its panels, inset where the frames sit over the scan's gaps (post.js)
+const scene: Scene = await (await fetch(`${import.meta.env.BASE_URL}data/scene.json`)).json();
+// the framed triptych: its panels, inset where the frames sit over the scan's gaps (post.ts)
 camera.setPainting({
   x0: Math.min(...scene.panels.map((p) => p.x0)) + 140, y0: Math.min(...scene.panels.map((p) => p.y0)) + 140,
   x1: Math.max(...scene.panels.map((p) => p.x1)) - 140, y1: Math.max(...scene.panels.map((p) => p.y1)) - 140,
@@ -43,12 +51,12 @@ const animator = new Animator(RIGS);
 const sound = new Soundscape(scene);
 const life = new LifeLayer(lifeCanvas, camera, scene);
 life.animator = animator;
-const afterFrameQueue = [];
-const afterFrame = (fn) => afterFrameQueue.push(fn);
+const afterFrameQueue: (() => void)[] = [];
+const afterFrame = (fn: () => void) => afterFrameQueue.push(fn);
 const shutters = new Shutters({ camera, renderer, post, scene, afterFrame });
 
 const ui = new UI({
-  root: document.getElementById('ui'), camera, renderer, post, scene,
+  root: document.getElementById('ui')!, camera, renderer, post, scene,
   hooks: {
     async onSound(on) {
       if (!on) { sound.setMuted(true); return; }
@@ -105,7 +113,7 @@ window.__garden = { camera, renderer, post, scene, ui, sound, life, animator, sh
 // one in eight at idle. The threshold sits at one and a half 120 Hz frames instead.
 const MIN_FRAME_MS = 12.5;
 let last = performance.now();
-function loop(now) {
+function loop(now: number) {
   // every animation frame, skipped or not: one that comes late after painting shrinks the stroke budget
   renderer.tiles.budget.tick(now);
   if (now - last < MIN_FRAME_MS) { requestAnimationFrame(loop); return; }
@@ -122,10 +130,10 @@ function loop(now) {
   }
   post.setRigs(ui.closed ? [] : animator.frame(camera, renderer.time, dt, life.pointer));
   renderer.frame(now, dt);
-  while (afterFrameQueue.length) afterFrameQueue.shift()();
+  while (afterFrameQueue.length) afterFrameQueue.shift()!();
   life.frame(dt, renderer.time);
   shutters.frame();
-  ui.update(dt);
+  ui.update();
   sound.update({ cx: camera.cx, cy: camera.cy, scale: camera.scale, viewW: camera.w, viewH: camera.h, time: renderer.time });
   requestAnimationFrame(loop);
 }

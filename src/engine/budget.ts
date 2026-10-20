@@ -13,7 +13,7 @@
 // Intervals while nothing is painted measure the display's refresh.
 export const BUDGET_MAX = 600_000;
 const BUDGET_MIN = 20_000;
-const FRAME_MS = 1000 / 60; // the frame loop's period (main.js)
+const FRAME_MS = 1000 / 60; // the frame loop's period (main.ts)
 
 export class FrameBudget {
   max: number;
