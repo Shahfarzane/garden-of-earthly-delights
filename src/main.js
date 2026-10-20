@@ -101,6 +101,8 @@ window.__garden = { camera, renderer, post, scene, ui, sound, life, animator, sh
 const MIN_FRAME_MS = 12.5;
 let last = performance.now();
 function loop(now) {
+  // every animation frame, skipped or not: one that comes late after painting shrinks the stroke budget
+  renderer.tiles.budget.tick(now);
   if (now - last < MIN_FRAME_MS) { requestAnimationFrame(loop); return; }
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;

@@ -4,12 +4,12 @@ import { createProgram, createTexture, createFramebuffer } from './gl.js';
 import { STROKE_VS, STROKE_FS, FILL_VS, FILL_FS } from './shaders.js';
 import { RECORD_BYTES } from '../shared/strokeModel.js';
 import { TILE, GROUND, levelTiles, WORLD_W, WORLD_H, MAX_Z } from '../world.js';
+import { FrameBudget } from './budget.js';
 
 export const BORDER = 4;
 const SLOT = TILE + 2 * BORDER;
 const REACH = 40; // max stroke extent past its file tile, native px
 const PAINT_MS = 520;
-const FRAME_INSTANCE_BUDGET = 600_000; // keeps GPU work per frame well under 16 ms while panning
 
 export class TileCache {
   constructor(gl, quad, store) {
@@ -43,6 +43,7 @@ export class TileCache {
     this.stats = { painting: 0, done: 0, instances: 0 };
     this.totalStrokes = 0; // every stroke laid this session, shown in the strokes panel
     this.strokeView = 0;
+    this.budget = new FrameBudget(); // stroke instances per frame
   }
 
   key(z, x, y) { return `${z}/${x}/${y}`; }
@@ -135,76 +136,84 @@ export class TileCache {
     gl.scissor(sx, sy, SLOT, SLOT);
   }
 
-  // Advance painting for queued tiles, nearest first, within a per-frame budget.
+  // Advance painting for queued tiles, nearest first, within the frame's budget of instances.
+  // A tile shows once its ground and every coarser level are down (its base); its own level then
+  // paints in over PAINT_MS. Where the budget runs out, even inside a file, the next frame goes on
+  // from the same stroke, so the order the analyzer simulated holds whatever the budget.
   paint(now) {
     const gl = this.gl;
     this.frame++;
-    let budget = FRAME_INSTANCE_BUDGET;
+    const budget = this.budget.value;
+    let left = budget;
     const active = [...this.tiles.values()].filter((t) => t.state !== 'done' && t.lastUsed >= this.frame - 2);
     active.sort((a, b) => a.priority - b.priority);
     let painting = 0;
     gl.disable(gl.DEPTH_TEST);
     for (const t of active) {
-      if (budget <= 0) break;
+      if (left <= 0) break;
       if (t.state === 'wait') {
         if (t.files.some((f) => f.entry.state === 'queued' || f.entry.state === 'loading' || f.entry.state === 'idle')) continue;
-        // all resolved: ground + ancestors now, finest level animated
+        // all resolved: ground, then the coarser levels, then the finest level animated
         const present = t.files.filter((f) => f.entry.state === 'ready' && f.entry.count > 0);
         t.animZ = present.length ? Math.max(...present.map((f) => f.z)) : 0;
+        // the first frame of a tile that nobody saw yet can go instantly
+        t.instant = this.instant || t.z <= 1;
+        t.base = present.filter((f) => t.instant || f.z < t.animZ).map((f) => ({ f, drawn: 0 }));
         t.anim = present.filter((f) => f.z === t.animZ).map((f) => ({ f, drawn: 0 }));
-        t.total = t.anim.reduce((a, s) => a + s.f.entry.count, 0);
         this.bindSlot(t);
         gl.useProgram(this.fill.program);
         gl.uniform3f(this.fill.u.u_color, GROUND[0] / 255, GROUND[1] / 255, GROUND[2] / 255);
         gl.disable(gl.BLEND);
         gl.bindVertexArray(this.fillVao);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        gl.enable(gl.BLEND);
-        gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
-        gl.useProgram(this.stroke.program);
-        gl.uniform2f(this.stroke.u.u_dstSize, SLOT, SLOT);
-        gl.uniform1f(this.stroke.u.u_fade, 1);
-        gl.uniform1f(this.stroke.u.u_strokeView, this.strokeView);
-        for (const f of present) if (f.z < t.animZ) budget -= this.drawFile(f, 0, f.entry.count);
-        t.state = 'paint';
-        t.start = now;
-        // the first frame of a tile that nobody saw yet can go instantly
-        t.instant = this.instant || t.z <= 1;
+        t.state = 'base';
       }
-      if (t.state === 'paint' && t.anim.some((a) => a.f.entry.state !== 'ready')) {
+      const files = t.state === 'base' ? t.base : t.anim;
+      if (files.some((a) => a.f.entry.state !== 'ready')) {
         // a file was evicted mid-paint: start this tile over once its files are back
         t.state = 'wait';
         continue;
       }
-      if (t.state === 'paint') {
-        for (const a of t.anim) a.f.entry.lastUsed = this.store.frame;
-        this.bindSlot(t);
-        gl.enable(gl.BLEND);
-        gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
-        gl.useProgram(this.stroke.program);
-        gl.uniform2f(this.stroke.u.u_dstSize, SLOT, SLOT);
-        gl.uniform1f(this.stroke.u.u_fade, 1);
-        gl.uniform1f(this.stroke.u.u_strokeView, this.strokeView);
-        const p = t.instant ? 1 : Math.min(1, (now - t.start) / PAINT_MS);
-        const e = 1 - Math.pow(1 - p, 2);
-        let left = 0;
-        for (const a of t.anim) {
-          const target = p >= 1 ? a.f.entry.count : Math.ceil(a.f.entry.count * e);
-          const n = this.drawFile(a.f, a.drawn, target);
-          a.drawn = target;
-          budget -= n;
-          left += a.f.entry.count - a.drawn;
+      for (const a of files) a.f.entry.lastUsed = this.store.frame;
+      this.bindSlot(t);
+      gl.enable(gl.BLEND);
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
+      gl.useProgram(this.stroke.program);
+      gl.uniform2f(this.stroke.u.u_dstSize, SLOT, SLOT);
+      gl.uniform1f(this.stroke.u.u_fade, 1);
+      gl.uniform1f(this.stroke.u.u_strokeView, this.strokeView);
+      painting++;
+      if (t.state === 'base') {
+        for (const a of t.base) {
+          const end = Math.min(a.f.entry.count, a.drawn + left);
+          left -= this.drawFile(a.f, a.drawn, end);
+          a.drawn = end;
+          if (left <= 0) break;
         }
-        painting++;
-        if (p >= 1 && left === 0) t.state = 'done';
+        if (t.base.some((a) => a.drawn < a.f.entry.count)) continue;
+        if (t.instant) { t.state = 'done'; continue; }
+        t.state = 'paint';
+        t.start = now;
       }
+      const p = Math.min(1, (now - t.start) / PAINT_MS);
+      const e = 1 - Math.pow(1 - p, 2);
+      let rest = 0;
+      for (const a of t.anim) {
+        const target = p >= 1 ? a.f.entry.count : Math.ceil(a.f.entry.count * e);
+        const end = Math.min(target, a.drawn + left);
+        left -= this.drawFile(a.f, a.drawn, end);
+        a.drawn = end;
+        rest += a.f.entry.count - a.drawn;
+      }
+      if (p >= 1 && rest === 0) t.state = 'done';
     }
     gl.disable(gl.SCISSOR_TEST);
     gl.disable(gl.BLEND);
     gl.bindVertexArray(null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     this.stats.painting = painting;
-    this.stats.instances = FRAME_INSTANCE_BUDGET - budget;
+    this.stats.instances = budget - left;
+    this.budget.spend(budget - left, left <= 0);
   }
 
   // Switch between the painting and the stroke view: every tile is painted again, stroke by stroke.
@@ -219,13 +228,13 @@ export class TileCache {
     return [(bx + sx0) / this.size, (by + sy0) / this.size, (bx + sx1) / this.size, (by + sy1) / this.size];
   }
 
-  // Find what to draw for tile (z,x,y): itself if painted, else the nearest painted ancestor's sub-rect.
+  // Find what to draw for tile (z,x,y): itself once its base is down, else the nearest such ancestor's sub-rect.
   source(z, x, y) {
     let zz = z, xx = x, yy = y;
     let fx0 = 0, fy0 = 0, fsz = TILE; // sub-rect in the candidate tile, tile px
     while (zz >= 0) {
       const t = this.tiles.get(this.key(zz, xx, yy));
-      if (t && t.state !== 'wait') { t.lastUsed = this.frame; return { t, uv: this.uvRect(t, fx0, fy0, fx0 + fsz, fy0 + fsz) }; }
+      if (t && (t.state === 'paint' || t.state === 'done')) { t.lastUsed = this.frame; return { t, uv: this.uvRect(t, fx0, fy0, fx0 + fsz, fy0 + fsz) }; }
       // go to parent
       fx0 = (fx0 + (xx & 1) * TILE) / 2; fy0 = (fy0 + (yy & 1) * TILE) / 2; fsz /= 2;
       xx >>= 1; yy >>= 1; zz--;
