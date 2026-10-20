@@ -3,9 +3,8 @@
 // markers, a story drawer, the sound and strokes panels and a minimap.
 import { WORLD_W, WORLD_H } from '../world.js';
 
-// The Mirage index. Mirage takes over mirage.nerd.ceo, where the Garden lives today, and the
-// Garden's own address is not settled yet (docs/plan.md, Round 7): change it here only.
-export const MIRAGE_URL = 'https://mirage.nerd.ceo/';
+// The Mirage index: the root of the site the Garden is a path of (site.config.js).
+export const MIRAGE_URL = '/';
 const SOURCE_URL = 'https://github.com/Shahfarzane/garden-of-earthly-delights';
 
 const ICON = {
@@ -52,7 +51,7 @@ export class UI {
     this.closed = false; // wings shut
     this.stats = null;
     this.build();
-    fetch('data/strokes/stats.json').then((r) => (r.ok ? r.json() : null)).then((s) => { this.stats = s; }).catch(() => {});
+    fetch(`${import.meta.env.BASE_URL}data/strokes/stats.json`).then((r) => (r.ok ? r.json() : null)).then((s) => { this.stats = s; }).catch(() => {});
   }
 
   build() {
@@ -76,7 +75,7 @@ export class UI {
     // navbar: breadcrumbs on the left; the painting's buttons and the menu on the right
     this.crumbs = el('nav', { class: 'crumbs', 'aria-label': 'Breadcrumbs' }, `<ol>
       <li><a class="lz" href="${MIRAGE_URL}"><span>Mirage</span></a></li>
-      <li><a class="lz" href="./" aria-current="page"><span>The Garden of Earthly Delights</span></a></li></ol>`);
+      <li><a class="lz" href="${import.meta.env.BASE_URL}" aria-current="page"><span>The Garden of Earthly Delights</span></a></li></ol>`);
     this.bar = el('nav', { class: 'bar', 'aria-label': 'Painting' });
     const controls = el('div', { class: 'controls', role: 'toolbar', 'aria-label': 'Painting controls' });
     const lz = (html, fn, attrs = {}) => {

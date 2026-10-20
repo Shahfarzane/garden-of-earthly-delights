@@ -27,11 +27,11 @@ function size() { camera.resize(window.innerWidth, window.innerHeight); }
 window.addEventListener('resize', size);
 size();
 
-const scene = await (await fetch('data/scene.json')).json();
+const scene = await (await fetch(`${import.meta.env.BASE_URL}data/scene.json`)).json();
 await renderer.init();
 const post = new Post(renderer.gl, renderer.quad, scene);
 renderer.post = post;
-post.loadEffects('data/effects.png');
+post.loadEffects(`${import.meta.env.BASE_URL}data/effects.png`);
 if (reduceMotion) { post.life = 0; renderer.tiles.instant = true; }
 
 const animator = new Animator(RIGS);

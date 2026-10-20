@@ -6,7 +6,7 @@ const MAX_INFLIGHT = 10;
 const GPU_BUDGET = (window.matchMedia('(pointer: coarse)').matches ? 160 : 512) * 1024 * 1024;
 
 export class StrokeStore {
-  constructor(gl, quadBuf, base = 'data/strokes') {
+  constructor(gl, quadBuf, base = `${import.meta.env.BASE_URL}data/strokes`) {
     this.gl = gl;
     this.quad = quadBuf;
     this.base = base;
