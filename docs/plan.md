@@ -215,7 +215,7 @@ Both checkouts, read on 2026-10-20:
 | a painting | one `payload.gz` of 3 to 5 MB, fetched whole; every stroke drawn every frame into a canvas capped at 2.4 MP | 13,715 stroke files (690 MB) in a tile pyramid, streamed per view, each tile painted once into an atlas |
 | a page | a scrolling document: navbar, painting box, information, footer | one fixed full-screen board that takes wheel, pinch, drag and keys |
 | build output | 86 files, 26 MB | 13,775 data files, 691 MB, plus the site |
-| repository | private (Shahfarzane/repainted-showcase), Söhne fonts committed | public and MIT (Shahfarzane/garden-of-earthly-delights), fonts kept out; the strokes panel links to it |
+| repository | private, Söhne fonts committed | public and MIT (Shahfarzane/garden-of-earthly-delights), fonts kept out; the strokes panel links to it |
 | hosting | none configured yet; takes over mirage.nerd.ceo | the Cloudflare Worker `mirage` on mirage.nerd.ceo |
 
 A merge would share the design tokens and the navbar. The two painting runtimes have nothing in common: Mirage's draws a whole painting from one buffer, and the Garden's engine exists because 57.9 million strokes do not fit in one. What a merge would cost:
@@ -226,11 +226,11 @@ A merge would share the design tokens and the navbar. The two painting runtimes 
 - The first load. React and Mirage's shell would add script to a page whose content is one canvas.
 - The analyzer (`tools/`, Node with sharp) and its regeneration steps would live in a site's repository.
 
-Decision: the Garden stays its own project, and its interface takes Mirage's design exactly: Mirage's tokens, lozenges, navbar and menu, with a breadcrumb "Mirage / The Garden of Earthly Delights" whose first crumb leads to the Mirage index (`MIRAGE_URL` in `src/ui/ui.js`). Mirage already lists the Garden as an external work behind one constant, `GARDEN_URL` in its catalog. To serve both under one address without one repository, Cloudflare can route a path of Mirage's domain (mirage.nerd.ceo/garden/*, say) to the Garden's Worker. The Garden would then build with a base of `/garden/`: its fetches are relative already, and seven absolute paths in `index.html` would follow the base. That choice, and both addresses, are open questions for Shahin.
+Decision: the Garden stays its own project, and its interface takes Mirage's design exactly: Mirage's tokens, lozenges, navbar and menu, with a breadcrumb "Mirage / The Garden of Earthly Delights" whose first crumb leads to the Mirage index (`MIRAGE_URL` in `src/ui/ui.js`). Mirage already lists the Garden as an external work behind one constant, `GARDEN_URL` in its catalog. Both sit under one address without one repository: Cloudflare routes a path of Mirage's domain to the Garden's Worker (below).
 
 ### The interface in Mirage's design
 
-Values come from klim-paintings' source, each cited with file and line at the top of `src/style.css`, and were checked against its running dev server's computed styles at 1440x900 and 390x844: lozenges 28 px high with 0 8px padding and 2 px corners, 5 px apart, 10 px above and below, 20 px margins (10 px on phones), the menu panel in the last two columns of twelve (three at 1366 and below, four at 1024 and below) on `#1c1c1c`, separators 1 px `#383838` with 5 px margins, and the colour mixes `#e2e2e2` to `#1c1c1c` of its black and white scheme. The fonts stay Die Grotesk and Martina Plantijn.
+Values come from klim-paintings' source, each cited with file and line at the top of `src/style.css`, and were checked against its running dev server's computed styles at 1440x900 and 390x844: lozenges 28 px high with 0 8px padding and 2 px corners, 5 px apart, 10 px above and below, 20 px margins (10 px on phones), the menu panel in the last two columns of twelve (three at 1366 and below, four at 1024 and below) on `#1c1c1c`, separators 1 px `#383838` with 5 px margins, and the colour mixes `#e2e2e2` to `#1c1c1c` of its black and white scheme. The type is Mirage's too, Söhne (Shahin, 2026-10-20: "since we wanna keep the same design as Klim, lets use whatever klim-paintings is using"), loaded as its `base.css` loads it from the untracked `fonts/` folder, with the menu and outward-link icons as glyphs of Söhne's icon face. A page loads Buch and the icon face, 47 kB, where Die Grotesk and Martina Plantijn took 243 kB.
 
 | here before | here now, in Mirage's terms |
 | --- | --- |
@@ -260,4 +260,22 @@ Proposal, not built, biggest first:
 3. Load `effects.png` (0.43 MB) after the first full view; only the water, fire and sway effects use it.
 4. Version the data path (`/data/v1/strokes/...`) and serve it `immutable` for a year instead of `max-age=86400`, so a return visit after a day does not revalidate 300 files.
 
-Open questions for Shahin: the Mirage index address (`MIRAGE_URL`, https://mirage.nerd.ceo/ for now) and the Garden's own address once Mirage takes that domain over, including whether to route a path of it to the Garden's Worker; and when to push and deploy this branch.
+### At mirage.nerd.ceo/garden/
+
+Shahin's call (2026-10-20): Mirage takes the root of mirage.nerd.ceo and the Garden lives at /garden/. The address is in one place, `site.config.js` (`HOST`, `BASE`).
+
+- Vite builds with `base: BASE` into a `garden/` folder of the Worker's assets: a Worker on a route serves the paths its folders mirror (Cloudflare, "Serving a subdirectory"). The app takes the base from `import.meta.env.BASE_URL` for every fetch of the scene, the effects, the strokes and the exterior. The manifest's URLs are relative, the canonical and preview addresses come from `site.config.js`, and the build writes `_headers` at the asset root with the `/garden/` paths.
+- `cloudflare.config.ts` drops the custom domain for two routes, mirage.nerd.ceo/garden (redirected to /garden/ by `auto-trailing-slash`) and mirage.nerd.ceo/garden/*, in the zone nerd.ceo. Cloudflare's custom domains page has a route on a path of a custom domain's host take that path, so Mirage's custom domain and these routes can share the host.
+- The Worker is renamed from `mirage` to `garden`, so deploying this branch creates a second Worker and leaves the live one alone.
+- The breadcrumb's "Mirage" and the menu's first item go to `/`, same origin and tab.
+- Checked on the dev server at /garden/: all 250 requests of a story deep link stay under /garden/, the real-input checks pass (42 at 1440x900 and 1728x990, 41 at 390x844, Söhne and the breadcrumb included), and `vite build` lays out `assets/garden/` with `_headers` at the asset root.
+
+The switch, when Shahin deploys (not done here):
+
+1. `npm run deploy` in this repo creates the Worker `garden` with its two routes. mirage.nerd.ceo stays on the old Worker `mirage`, which keeps serving the old Garden at the root, and /garden/ already goes to the new Worker.
+2. Mirage's deploy takes mirage.nerd.ceo as its custom domain. Either detach the domain from the old Worker `mirage` first, or name Mirage's Worker `mirage`, which replaces the old one in place, domain included.
+3. Delete the old Worker `mirage` if it is still there, and point Mirage's `GARDEN_URL` at /garden/.
+
+Old shared links such as mirage.nerd.ceo/#story=… will open Mirage's index after the switch. A redirect for them has to be in Mirage's page script, since a server never sees the hash. That is a follow-up for Mirage.
+
+Open question for Shahin: when to push and deploy this branch.
