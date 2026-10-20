@@ -20,6 +20,7 @@ Nothing on screen may be a decoded photograph of the painting. The scans feed on
 
 ## Invariants
 
+- Strict TypeScript throughout; `npm run check` (`tsc -b` over `tsconfig.app.json` and `tsconfig.node.json`, then the build) must pass. Node runs `tools/` by stripping types, so `tools/` and everything it imports from `src/` (`shared/strokeModel.ts`, the data types in `scene.ts`) use erasable syntax only, and imports name their `.ts` files.
 - `src/shared/strokeModel.ts` (CPU) and `STROKE_FS` in `src/engine/shaders.ts` (GPU) must stay in lockstep; the analyzer relies on simulating exactly what the browser paints.
 - World units are source-scan pixels (156,547 x 89,116). Level z has scale 2^(z-9); tiles are 256 px.
 - `public/data/strokes/`, `public/data/exterior/` and `work/` are generated and gitignored.

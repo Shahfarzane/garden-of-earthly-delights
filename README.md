@@ -16,6 +16,12 @@ npm run dev
 
 Open http://localhost:5317/garden/.
 
+The code is strict TypeScript. This type-checks the app and the analyzer, then builds the site:
+
+```bash
+npm run check
+```
+
 The stroke data (about 690 MB) is generated, not committed. A fresh clone shows the board, the frames and the UI but no paint until you run the pipeline in [Regenerate the data](#regenerate-the-data), which needs the 2 GB tile scans.
 
 Controls: the frame stays put and only the painting moves inside it. On a phone held upright the frame fills the screen and the painting starts on the centre panel's middle; pan sideways to reach the wings. Pinch (or Ctrl/Cmd + scroll, or the mouse wheel) to zoom, two-finger scroll or drag to pan once zoomed in, double-click to zoom in (Shift to zoom out), arrow keys or WASD to pan, `+`/`-` to zoom, `0` for the whole triptych, Esc to close a story or panel, hold `L` to sweep a raking lamp over the varnish. Top right: Exterior closes or opens the wings, Strokes shows the counts and a mode that paints every stroke in its own colour, Sound picks off, nature or period music, and the menu holds story markers, living painting, varnish and cracks, and full screen. Zoom and the whole painting are bottom right. The interface follows Mirage, Shahin's site for every painting he repaints with code; the breadcrumb leads back to it.
@@ -71,7 +77,7 @@ WORLD=exterior node tools/prepareExterior.ts /path/to/El_Bosco_-_Triptico_del_Ja
 WORLD=exterior node tools/paint.ts --levels 0-3
 ```
 
-`--workers` trades speed for heat (all cores by default); `--resume` skips tiles already written. `node tools/manifest.ts` refreshes the list of deep tiles the browser may request and writes `stats.json`, the exact counts shown in the strokes panel. `node tools/simPreview.ts 6 x0 y0 x1 y1 out.png` (with `--sim` passed to `paint.js`) writes the analyzer's simulated copy next to the original for any region.
+`--workers` trades speed for heat (all cores by default); `--resume` skips tiles already written. `node tools/manifest.ts` refreshes the list of deep tiles the browser may request and writes `stats.json`, the exact counts shown in the strokes panel. `node tools/simPreview.ts 6 x0 y0 x1 y1 out.png` (with `--sim` passed to `paint.ts`) writes the analyzer's simulated copy next to the original for any region.
 
 Timing on an M1 Pro: `prepare` about 2 minutes, levels 0 to 6 about 15 minutes, the deep hotspot levels roughly an hour at full speed (z8 alone took 32 minutes). Stroke data totals about 690 MB (185 MB for levels 0 to 6, 505 MB for the deep hotspots). Without the exterior step the wings control has nothing to show on the shutters.
 
