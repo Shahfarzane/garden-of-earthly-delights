@@ -13,6 +13,9 @@ uniform sampler2D u_scene;
 uniform sampler2D u_fx;
 uniform vec2 u_view;       // physical px
 uniform vec3 u_cam;        // cx, cy (world), k = physical px per world px
+uniform vec3 u_rest;       // the same at rest: the frame and the board stay drawn here (camera.js)
+uniform vec4 u_open;       // the frame's opening, physical px, y down (camera.js)
+uniform float u_hug;       // 1: the frame is the screen's edge, round a cropped painting (upright phones)
 uniform float u_time;
 uniform float u_age;       // craquelure + varnish amount 0..1
 uniform float u_life;      // animation amount 0..1
@@ -114,59 +117,74 @@ vec3 frame(vec2 w, vec4 R, float FW, out float a) {
   return col;
 }
 
+// Everything around the painted panels: the board, the triptych's drop shadow, the frames
+// (nearest panel wins between the wings) and the iron hinges in the gaps.
+vec3 surround(vec2 w, float k, bool closed) {
+  vec3 col = board(w, k);
+  float FW = 1500.0;
+  float best = 1e9; int bi = 0;
+  for (int i = 0; i < 3; i++) {
+    if (closed && i != 1) continue;
+    vec4 R = u_panels[i];
+    vec2 q = max(vec2(R.x - w.x, R.y - w.y), vec2(w.x - R.z, w.y - R.w));
+    float d = max(q.x, q.y);
+    if (d < best) { best = d; bi = i; }
+  }
+  // drop shadow of the triptych on the board
+  vec4 all = closed ? vec4(u_panels[1].x - FW, u_panels[1].y - FW, u_panels[1].z + FW, u_panels[1].w + FW)
+                    : vec4(u_panels[0].x - FW, u_panels[0].y - FW, u_panels[2].z + FW, u_panels[2].w + FW);
+  vec2 sh = max(vec2(all.x - w.x, all.y - (w.y - 900.0)), vec2(w.x - all.z, (w.y - 900.0) - all.w));
+  float sd = max(sh.x, sh.y);
+  col *= mix(0.35, 1.0, smoothstep(-200.0, 4500.0, sd));
+  float a;
+  vec3 fc = frame(w, u_panels[bi], FW, a);
+  col = mix(col, fc, a);
+  // iron hinges in the gaps between the wings
+  for (int h = 0; h < 2; h++) {
+    if (closed) break;
+    float gx = h == 0 ? (u_panels[0].z + u_panels[1].x) * 0.5 : (u_panels[1].z + u_panels[2].x) * 0.5;
+    for (int j = 0; j < 3; j++) {
+      float gy = mix(u_panels[1].y, u_panels[1].w, j == 0 ? 0.12 : j == 1 ? 0.5 : 0.88);
+      vec2 hp = (w - vec2(gx, gy)) / vec2(1500.0, 2600.0);
+      float box = max(abs(hp.x), abs(hp.y));
+      if (box < 0.5) {
+        float knuckle = smoothstep(0.12, 0.0, abs(hp.x)) ;
+        vec3 iron = vec3(0.09, 0.085, 0.08) * (0.7 + 0.6 * fbm(w / 120.0)) + knuckle * 0.12;
+        iron += smoothstep(0.05, 0.0, abs(length(hp - vec2(0.0, 0.32)) - 0.06)) * 0.15;
+        iron += smoothstep(0.05, 0.0, abs(length(hp - vec2(0.0, -0.32)) - 0.06)) * 0.15;
+        col = mix(col, iron, smoothstep(0.5, 0.47, box));
+      }
+    }
+  }
+  return col;
+}
+
 void main() {
   vec2 frag = gl_FragCoord.xy;
   vec2 sp = vec2(frag.x, u_view.y - frag.y);                  // screen px, y down
+  bool closed = u_hideWings > 0.5;
+  // the frame stays where it rests: outside its opening, draw it and the board at rest
+  vec2 wr = u_rest.xy + (sp - u_view * 0.5) / u_rest.z;
+  vec4 F = u_open;
+  if (sp.x < F.x || sp.x > F.z || sp.y < F.y || sp.y > F.w) {
+    if (u_hug > 0.5) {
+      // a plain frame round the opening, measured in world px at rest like the others
+      vec2 q = sp / u_rest.z;
+      float a;
+      vec3 fc = frame(q, F / u_rest.z, 1500.0, a);
+      o = vec4(mix(board(q, u_rest.z), fc, a), 1.0);
+    } else o = vec4(surround(wr, u_rest.z, closed), 1.0);
+    return;
+  }
+
   vec2 w = u_cam.xy + (sp - u_view * 0.5) / u_cam.z;         // world px
   float k = u_cam.z;
 
-  // which panel
+  // which panel; between the wings, their frames and hinges move with the painting
   int pi = -1;
   for (int i = 0; i < 3; i++) { vec4 R = u_panels[i]; if (w.x >= R.x && w.x <= R.z && w.y >= R.y && w.y <= R.w) pi = i; }
-  bool closed = u_hideWings > 0.5;
   if (closed && pi != 1) pi = -1;
-
-  if (pi < 0) {
-    // frames (nearest panel wins between the wings), hinges, board
-    vec3 col = board(w, k);
-    float FW = 1500.0;
-    float best = 1e9; int bi = 0;
-    for (int i = 0; i < 3; i++) {
-      if (closed && i != 1) continue;
-      vec4 R = u_panels[i];
-      vec2 q = max(vec2(R.x - w.x, R.y - w.y), vec2(w.x - R.z, w.y - R.w));
-      float d = max(q.x, q.y);
-      if (d < best) { best = d; bi = i; }
-    }
-    // drop shadow of the triptych on the board
-    vec4 all = closed ? vec4(u_panels[1].x - FW, u_panels[1].y - FW, u_panels[1].z + FW, u_panels[1].w + FW)
-                      : vec4(u_panels[0].x - FW, u_panels[0].y - FW, u_panels[2].z + FW, u_panels[2].w + FW);
-    vec2 sh = max(vec2(all.x - w.x, all.y - (w.y - 900.0)), vec2(w.x - all.z, (w.y - 900.0) - all.w));
-    float sd = max(sh.x, sh.y);
-    col *= mix(0.35, 1.0, smoothstep(-200.0, 4500.0, sd));
-    float a;
-    vec3 fc = frame(w, u_panels[bi], FW, a);
-    col = mix(col, fc, a);
-    // iron hinges in the gaps between the wings
-    for (int h = 0; h < 2; h++) {
-      if (closed) break;
-      float gx = h == 0 ? (u_panels[0].z + u_panels[1].x) * 0.5 : (u_panels[1].z + u_panels[2].x) * 0.5;
-      for (int j = 0; j < 3; j++) {
-        float gy = mix(u_panels[1].y, u_panels[1].w, j == 0 ? 0.12 : j == 1 ? 0.5 : 0.88);
-        vec2 hp = (w - vec2(gx, gy)) / vec2(1500.0, 2600.0);
-        float box = max(abs(hp.x), abs(hp.y));
-        if (box < 0.5) {
-          float knuckle = smoothstep(0.12, 0.0, abs(hp.x)) ;
-          vec3 iron = vec3(0.09, 0.085, 0.08) * (0.7 + 0.6 * fbm(w / 120.0)) + knuckle * 0.12;
-          iron += smoothstep(0.05, 0.0, abs(length(hp - vec2(0.0, 0.32)) - 0.06)) * 0.15;
-          iron += smoothstep(0.05, 0.0, abs(length(hp - vec2(0.0, -0.32)) - 0.06)) * 0.15;
-          col = mix(col, iron, smoothstep(0.5, 0.47, box));
-        }
-      }
-    }
-    o = vec4(col, 1.0);
-    return;
-  }
+  if (pi < 0) { o = vec4(surround(w, k, closed), 1.0); return; }
 
   vec2 uvw = w / u_world;
   vec4 fx = texture(u_fx, uvw);
@@ -305,10 +323,15 @@ void main() {
     float dl = length(w - u_pointer) * k / max(u_view.x, u_view.y);
     col *= 1.0 + u_rake * (0.35 * exp(-dl * dl * 9.0) - 0.15);
   }
-  // panel edge shading under the frame lip
+  // shading under the frame's lip: along the fixed opening, and along the inner edges of the
+  // wings, which move with the painting
+  float lip = min(min(sp.x - F.x, F.z - sp.x), min(sp.y - F.y, F.w - sp.y)) / u_rest.z;
+  col *= mix(0.55, 1.0, smoothstep(0.0, 380.0, lip));
   vec4 R = u_panels[pi];
-  float edge = min(min(w.x - R.x, R.z - w.x), min(w.y - R.y, R.w - w.y));
-  col *= mix(0.55, 1.0, smoothstep(0.0, 380.0, edge));
+  float inner = 1e9;
+  if (!closed && pi > 0) inner = min(inner, w.x - R.x);
+  if (!closed && pi < 2) inner = min(inner, R.z - w.x);
+  col *= mix(0.55, 1.0, smoothstep(0.0, 380.0, inner));
   o = vec4(col, 1.0);
 }`;
 
@@ -411,6 +434,10 @@ export class Post {
     gl.uniform1i(u.u_fx, 1);
     gl.uniform2f(u.u_view, scene.w, scene.h);
     gl.uniform3f(u.u_cam, c.cx, c.cy, c.scale * info.dpr);
+    gl.uniform3f(u.u_rest, c.rest.cx, c.rest.cy, c.rest.scale * info.dpr);
+    const O = c.opening(), d = info.dpr;
+    gl.uniform4f(u.u_open, O.x0 * d, O.y0 * d, O.x1 * d, O.y1 * d);
+    gl.uniform1f(u.u_hug, c.hug ? 1 : 0);
     gl.uniform1f(u.u_time, info.time);
     gl.uniform1f(u.u_age, this.age);
     gl.uniform1f(u.u_life, this.fx ? this.life : 0);

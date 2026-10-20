@@ -119,6 +119,10 @@ export class Shutters {
     const half = (cx1 - cx0) / 2, h = cy1 - cy0;
     const wL = half + (lx1 - lx0 - half) * e, wR = half + (rx1 - rx0 - half) * e;
     const dL = (lx1 - cx0) * e, dR = (rx0 - cx1) * e;
+    // shut, they are the painting the fixed frame shows: clipped to its opening as the camera zooms;
+    // inside a hugging frame they swing behind it too
+    if (this.state === 'closed' || this.camera.hug) { const O = this.camera.opening(); this.root.style.clipPath = `inset(${O.y0}px ${this.camera.w - O.x1}px ${this.camera.h - O.y1}px ${O.x0}px)`; }
+    else this.root.style.clipPath = '';
     this.root.style.perspective = `${Math.round((cx1 - cx0) * 2.4)}px`;
     this.root.style.perspectiveOrigin = `${(cx0 + cx1) / 2}px ${(cy0 + cy1) / 2}px`;
     this.sl.style.cssText = `left:${cx0}px;top:${cy0}px;width:${wL}px;height:${h}px;transform-origin:0 50%;transform:translateX(${dL}px) rotateY(${-180 * e}deg)`;
@@ -185,10 +189,12 @@ export class Shutters {
     this.post.hideWings = 1;
     await this.swing(1, 0);
     this.state = 'closed';
+    this.camera.setFramed(this.C);
   }
 
   async open() {
     this.state = 'opening';
+    this.camera.setFramed(this.camera.painting);
     await this.whole();
     await this.swing(0, 1);
     this.post.hideWings = 0;

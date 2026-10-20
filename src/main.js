@@ -27,11 +27,16 @@ function size() { camera.resize(window.innerWidth, window.innerHeight); }
 window.addEventListener('resize', size);
 size();
 
-const scene = await (await fetch('data/scene.json')).json();
+const scene = await (await fetch(`${import.meta.env.BASE_URL}data/scene.json`)).json();
+// the framed triptych: its panels, inset where the frames sit over the scan's gaps (post.js)
+camera.setPainting({
+  x0: Math.min(...scene.panels.map((p) => p.x0)) + 140, y0: Math.min(...scene.panels.map((p) => p.y0)) + 140,
+  x1: Math.max(...scene.panels.map((p) => p.x1)) - 140, y1: Math.max(...scene.panels.map((p) => p.y1)) - 140,
+});
 await renderer.init();
 const post = new Post(renderer.gl, renderer.quad, scene);
 renderer.post = post;
-post.loadEffects('data/effects.png');
+post.loadEffects(`${import.meta.env.BASE_URL}data/effects.png`);
 if (reduceMotion) { post.life = 0; renderer.tiles.instant = true; }
 
 const animator = new Animator(RIGS);
@@ -95,10 +100,14 @@ document.addEventListener('visibilitychange', () => {
 window.__garden = { camera, renderer, post, scene, ui, sound, life, animator, shutters };
 
 // 60 fps is plenty for a living painting; on 120 Hz screens every other frame is skipped,
-// halving GPU and battery cost.
-const MIN_FRAME_MS = 1000 / 61;
+// halving GPU and battery cost. rAF timestamps jitter by a millisecond or two, so two 120 Hz
+// frames can add up to less than 16.4 ms (1000 / 61), which skipped a third frame: 25 ms frames,
+// one in eight at idle. The threshold sits at one and a half 120 Hz frames instead.
+const MIN_FRAME_MS = 12.5;
 let last = performance.now();
 function loop(now) {
+  // every animation frame, skipped or not: one that comes late after painting shrinks the stroke budget
+  renderer.tiles.budget.tick(now);
   if (now - last < MIN_FRAME_MS) { requestAnimationFrame(loop); return; }
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;

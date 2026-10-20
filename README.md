@@ -1,6 +1,6 @@
 # Mirage: The Garden of Earthly Delights, painted live
 
-Hieronymus Bosch's triptych, repainted stroke by stroke in your browser on an endless dark board. Live at https://mirage.nerd.ceo.
+Hieronymus Bosch's triptych, repainted stroke by stroke in your browser, in a fixed frame you can zoom into down to a single brushstroke. Live at https://mirage.nerd.ceo/garden/, part of Mirage, Shahin's site for every painting he repaints with code.
 
 No photograph of the painting is shipped or displayed. An offline analyzer studied the Prado's 156,547 x 89,116 px scan like a copyist and wrote 57.9 million brush strokes (15.4 million for the whole painting, 42.4 million more of deep detail around the 46 story points, plus 113,570 for the closed shutters). The browser paints every one of them with WebGL2, then brings the scene to life with water, fire, light, moving figures, creatures and synthesized sound.
 
@@ -14,13 +14,13 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5317.
+Open http://localhost:5317/garden/.
 
 The stroke data (about 690 MB) is generated, not committed. A fresh clone shows the board, the frames and the UI but no paint until you run the pipeline in [Regenerate the data](#regenerate-the-data), which needs the 2 GB tile scans.
 
-Controls: two-finger scroll or drag to pan, pinch (or Ctrl/Cmd + scroll, or the mouse wheel) to zoom, double-click to zoom in (Shift to zoom out), arrow keys or WASD to pan, `+`/`-` to zoom, `0` for the whole triptych, Esc to close a story or panel, hold `L` to sweep a raking lamp over the varnish. The rail bottom right has: zoom, whole painting, close or open the wings (the exterior), brush strokes (counts and a mode that shows every stroke in its own colour), story markers, living painting, varnish and cracks, full screen, and sound (off, nature, or period music).
+Controls: the frame stays put and only the painting moves inside it. On a phone held upright the frame fills the screen and the painting starts on the centre panel's middle; pan sideways to reach the wings. Pinch (or Ctrl/Cmd + scroll, or the mouse wheel) to zoom, two-finger scroll or drag to pan once zoomed in, double-click to zoom in (Shift to zoom out), arrow keys or WASD to pan, `+`/`-` to zoom, `0` for the whole triptych, Esc to close a story or panel, hold `L` to sweep a raking lamp over the varnish. Top right: Exterior closes or opens the wings, Strokes shows the counts and a mode that paints every stroke in its own colour, Sound picks off, nature or period music, and the menu holds story markers, living painting, varnish and cracks, and full screen. Zoom and the whole painting are bottom right. The interface follows Mirage, Shahin's site for every painting he repaints with code; the breadcrumb leads back to it.
 
-Fonts: the site uses Die Grotesk (text) and Martina Plantijn (headings) by Klim Type Foundry, under a web licence. They are not in this repo; without a `fonts/` folder the UI falls back to system fonts.
+Fonts: the interface is set in Söhne by Klim Type Foundry, as Mirage is, under a web licence. The files are not in this repo: put `Sohne-Buch`, `Sohne-BuchKursiv`, `Sohne-Halbfett`, `Sohne-HalbfettKursiv`, `SohneMono-Buch` and `SohneIkon-Buch` (`.woff2`) in a `fonts/` folder. Without them the UI falls back to system fonts.
 
 ## How it works
 
@@ -75,13 +75,13 @@ Timing on an M1 Pro: `prepare` about 2 minutes, levels 0 to 6 about 15 minutes, 
 
 ## Deploy
 
-The site is a static Cloudflare Worker, configured in `cloudflare.config.ts` (custom domain included, so Cloudflare manages the DNS record; change `domains` in a fork). `vite build` writes Cloudflare's Build Output into `.cloudflare/output/`, and the `cf` CLI uploads it:
+The site is a static Cloudflare Worker, `garden`, configured in `cloudflare.config.ts`: two routes send mirage.nerd.ceo/garden and mirage.nerd.ceo/garden/* to it, while Mirage's own Worker holds the domain's root. The address lives in `site.config.js` (`HOST` and `BASE`); change it there in a fork. `vite build` writes Cloudflare's Build Output into `.cloudflare/output/`, with the site in a `garden/` folder of the Worker's assets, since a Worker on a route serves the paths its folders mirror, and the `cf` CLI uploads it:
 
 ```bash
 npm run deploy
 ```
 
-Uploads are incremental: only changed files are sent. Cache rules live in `public/_headers`; link previews use `public/og.jpg`, rendered from the app itself.
+Uploads are incremental: only changed files are sent. The build writes the cache rules (`HEADERS` in `vite.config.js`) to `_headers` at the root of the assets; link previews use `public/og.jpg`, rendered from the app itself.
 
 ## Licence and sources
 

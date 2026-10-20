@@ -23,7 +23,7 @@ const VIEW_W = 1280, VIEW_H = 800;
 const SCALE_MIN = 0.006, SCALE_MAX = 2.0;
 
 async function main() {
-  const scene = await (await fetch('/data/scene.json')).json();
+  const scene = await (await fetch(`${import.meta.env.BASE_URL}data/scene.json`)).json();
   const sc = new Soundscape(scene);
   window.__soundscape = sc;
 

@@ -137,6 +137,10 @@ export class LifeLayer {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     if (!this.enabled) return;
     const c = this.camera, k = this.dpr, s = c.scale;
+    // creatures stay inside the frame's opening
+    const O = c.opening();
+    const clip = `inset(${O.y0}px ${c.w - O.x1}px ${c.h - O.y1}px ${O.x0}px)`;
+    if (clip !== this.clip) { this.canvas.style.clipPath = clip; this.clip = clip; }
     const v = c.view();
     const pad = (v.x1 - v.x0) * 0.15;
     const inView = (x, y, m = 0) => x > v.x0 - pad - m && x < v.x1 + pad + m && y > v.y0 - pad - m && y < v.y1 + pad + m;

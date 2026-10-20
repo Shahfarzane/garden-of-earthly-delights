@@ -11,7 +11,7 @@ export function attachInput(el, camera, { onTap, onActivity, isEnabled = () => t
 
   const pos = (e) => { const r = el.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
 
-  el.addEventListener('pointerdown', (e) => {
+  const down = (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     try { el.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
     pointers.set(e.pointerId, pos(e));
@@ -23,6 +23,12 @@ export function attachInput(el, camera, { onTap, onActivity, isEnabled = () => t
     downAt = { p: pos(e), t: performance.now(), moved: false };
     if (pointers.size === 2) startPinch();
     onActivity?.();
+  };
+  el.addEventListener('pointerdown', down);
+  // A finger on a story marker still pans and pinches the painting: the board captures it, and a
+  // plain tap opens the story through onTap, as anywhere else on the painting.
+  window.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch' && e.target instanceof Element && e.target.closest('.poi')) down(e);
   });
 
   function startPinch() {
@@ -78,7 +84,7 @@ export function attachInput(el, camera, { onTap, onActivity, isEnabled = () => t
   // Wheel and trackpad gestures are handled on the window, whatever is under the pointer:
   // a pinch must never fall through to the browser's own page zoom. Scrollable panels
   // (the story text, popovers) keep plain scrolling.
-  const scrollsItself = (t) => t instanceof Element && t.closest('.story, .pop, .minimap');
+  const scrollsItself = (t) => t instanceof Element && t.closest('.story, .panel, .minimap');
   window.addEventListener('wheel', (e) => {
     const pinch = e.ctrlKey || e.metaKey;
     if (!pinch && scrollsItself(e.target)) return;

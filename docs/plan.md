@@ -145,3 +145,184 @@ Design of the next step, an ancestor stroke index, not implemented (owner decisi
 - CPU side, per file at load: a 16 px grid (32x32 cells over [-64, 448)) of Uint16 record indices whose quad (`strokeExtent` at scale 1, padded 1 px) intersects the cell, about 2.5 entries per record, 5 B per record, about 30 MB with z0..z5 fully loaded. Per (tile, file): mark the cells under the slot in an n-bit set, emit ascending indices, upload to a transient index buffer, one `drawArraysInstanced` per file with count = touching.
 - Expected gain: a z7 tile draws about 25k instances instead of 166k, vertex time drops from 1.2 to about 0.2 ms, fragment time stays (1.1 to 2.0 ms at z7, 2.6 ms at z8, mostly coarse strokes magnified into the slot). Fills get 1.6 to 1.8 times faster (35 frames to about 20 for 176 tiles), not the 5 times hoped for; while the tile must equal the analyzer's simulation, the magnified ancestors' fragments are the floor.
 - Tradeoff to decide: a vertex shader data path change, 33 % more stroke memory and the CPU index, for about 1.7x on cold fills. Anything with a bigger upside changes what is drawn (ancestors painted once per parent and upsampled, for instance) and gives up pixel identity.
+
+## Round 6 (2026-10-20): an adaptive paint budget
+
+Shahin's call after Round 5: keep the budget logic, make it adapt to the device, defer the ancestor stroke index. `FRAME_INSTANCE_BUDGET` became `FrameBudget` in `src/engine/budget.js`, with 600k as its ceiling. Only the number of instances drawn per frame changes. What is drawn and the order stay the analyzer's.
+
+Method as in Round 5, on the M1 Pro (MBPro16, 16-core GPU), Chrome for Testing 155.0.8059.84 (ANGLE Metal), a headed window at 1600x1000 CSS px and dpr 2 (3200x2000 canvas), 120 Hz display. The view is "Ear and Knife" at scale 0.1 (z7) and 0.2 (z8), 176 tiles each. A cold fill means: files loaded, tiles of z3 and up dropped, paint-in off. Raw rAF intervals were recorded for every callback in the visible window, and loop intervals for every frame the painter ran.
+
+To stand in for a slow GPU, the bench repeats every stroke draw k-1 more times into an atlas slot nobody sees: the same instances, so the same vertex and fragment work, and stroke painting costs k times as much. Compositing and the post pass keep their real cost. With a fixed budget at k=4, 100k and 150k per frame run with no late frame and 300k runs late (raw p50 16.6 ms, max 26), so this "GPU" can paint 150k to 300k a frame.
+
+### The 60 fps cap dropped frames
+
+`MIN_FRAME_MS = 1000 / 61` skipped every other 120 Hz frame as intended, but rAF timestamps jitter between 7.3 and 9.3 ms, so two frames sometimes add up to less than 16.39 ms and the loop waited for a third. At idle 29 of about 220 loop frames ran at 25 ms, and every fill in the table below had 3 to 7 such frames. The threshold is now 12.5 ms, one and a half 120 Hz frames (commit 4012901): 241 loop frames in 4 s at idle, none over 20 ms. It still runs every frame at 60 Hz, and 72 fps instead of 48 on a 144 Hz screen.
+
+### How the budget adapts
+
+- The signal is the raw interval between animation frames. When the GPU cannot finish a frame's strokes in time, the next frame comes late. Late means past the loop's 16.7 ms slot by half a refresh: 20.8 ms at 120 Hz, 25 ms at 60 Hz. A 16.7 ms interval at 120 Hz only skips a frame the loop would not paint, and counting it as late cut the budget in steps from 253k to 51k in one trace.
+- A late frame after painting cuts the budget to what was painted times 16.7 ms over the interval, 0.25 to 0.8. The two frames after a cut cannot cut again, because their lateness can still be the GPU finishing frames queued before it. Without this hold one fill cascaded from 260k to the 20k floor.
+- A second late frame within 30 frames also caps regrowth at 90% of what was painted. One late frame alone leaves the cap: in one suite run a single outside event (other sessions share this GPU) set the cap at 195k on the fast path, and the next four fills ran slow until it relaxed.
+- On-time frames where the budget held work back grow it by 20% and relax the cap by 0.3%. Idle frames change neither, so a learned limit survives between fills and a slow device does not re-learn it with a late frame each time.
+- Stalls longer than four frames (a shader compile, a busy main thread) and late frames that painted under half the budget cut by at most a half and leave the cap alone. Intervals while nothing paints measure the refresh rate.
+- The budget is strict. The shipped code checked it only between tiles, so a frame painted 602k to 772k at 600k, and one z8 tile (180k instances) could never be split. Now a frame stops at its budget inside a file and the next frame resumes at the same record. A tile stays behind its parent until its coarser levels are all down, as before.
+- The budget is a whole number. While it was fractional, `start * 12` stopped being a multiple of 4, ANGLE converted the vertex buffer on the fly (stalls of 33 to 118 ms) and the draws read misaligned records.
+
+Pixel identity: 24 tiles at z7 and 24 at z8, painted with paint-in off at 600k and again at 30,000 and at 7,777 instances per frame (763 and 1,033 frames of resumes inside files), read back byte-identical when they land in the same atlas slot. Tiles that land in another slot differ by at most 1 in about 0.05% of bytes, 600k against 600k included: vertex snapping depends on where the slot sits in the atlas, in the shipped code too.
+
+### Before and after
+
+| cold fill, 176 tiles | frames | ms | raw rAF p50 / max | loop frames over 20 ms | over 34 ms |
+| --- | --- | --- | --- | --- | --- |
+| z7, before (bf717e0) | 34 | 575 to 592 | 8.3 / 9.3 | 3 to 5, all the cap | 0 |
+| z7, after | 38 | 617 | 8.3 / 9.4 | 0 | 0 |
+| z8, before | 44 | 758 to 775 | 8.3 / 9.3 | 5 to 7, all the cap | 0 |
+| z8, after | 51 | 833 | 8.3 / 9.4 | 0 | 0 |
+| z7 x4 GPU, before | 34 | 925 | 25.0 / 41.5 | 30 of 33 | 1 |
+| z7 x4, after, budget starting at 600k | 90 | 1,550 | 8.3 / 26.0 | 8 | 0 |
+| z7 x4, after, learned | 161 | 2,667 | 8.3 / 9.4 | 0 | 0 |
+| z8 x4 GPU, before | 44 | 1,346 | 29.6 / 84.2 | 41 of 43 | 6 |
+| z8 x4, after, starting at 600k | 93 | 1,600 | 9.0 / 25.1 | 8 | 0 |
+| z8 x4, after, learned | 185 | 3,067 | 8.3 / 9.4 | 0 | 0 |
+| z7 x8 GPU, after, starting at 600k | 211 | 3,588 | 8.3 / 50.6 | 5 | 2 |
+| z7 x8, after, learned | 177 | 2,992 | 8.4 / 25.8 | 7 | 0 |
+
+At full speed the budget never left 600k and no frame was late, before or after. This M1 Pro paints the shipped code's 772k frames on time too. The strict budget costs 4 frames at z7 and 7 at z8 (fills about 7% longer) because frames no longer overrun. A 700k ceiling would bring the old fill speed back on this Mac, and the controller would make it safe on slower GPUs; it stays at 600k as decided. On the slow GPU the fill takes longer, since the same work now goes into frames that make their slot. The first fill on a slow device costs 5 to 8 frames of about 25 ms (two of about 50 ms at x8) while the budget comes down from 600k. Starting lower would cost the fast Macs a few frames of their first fill instead.
+
+| flight, whole painting to "Ear and Knife", paint-in on | ms | raw rAF max | over 20 ms | over 34 ms |
+| --- | --- | --- | --- | --- |
+| before | 2,150 to 2,192 | 9.4 | 0 | 0 |
+| after | 2,158 to 2,174 | 9.4 | 0 | 0 |
+| x4 GPU, before | 2,775 | 58.4 | 46 | 28 |
+| x4, after, budget starting at 600k | 4,434 | 25.4 | 3 | 0 |
+| x4, after, second flight | 4,184 | 16.7 | 0 | 0 |
+
+A pan at 3 px per frame at z7 and z8 runs at raw p95 9.3 ms and max 9.4 ms, at full speed and on the x4 GPU alike, with the budget at 600k: a slow pan starts few tiles per frame. Idle at z7 is p50 8.3, p95 9.3.
+
+Limits: measured on this Mac only. The simulation scales stroke painting, not compositing or the post pass, and no phone was at hand. The ancestor stroke index of Round 5 stays unbuilt.
+
+## Round 7 (2026-10-20): part of Mirage
+
+Mirage is Shahin's site for every painting he repaints with code, built in klim-paintings (React 19, a layout taken from Klim Type Foundry's family pages). The Garden has to look like part of it. Shahin's preference: one project if possible, otherwise a matching interface.
+
+### One project or two
+
+Both checkouts, read on 2026-10-20:
+
+| | Mirage (klim-paintings) | the Garden |
+| --- | --- | --- |
+| stack | React 19 prerendered per route, TypeScript, Tailwind 4, Vite+ with oxlint and oxfmt, pnpm | plain JavaScript modules, Vite 8, npm |
+| a painting | one `payload.gz` of 3 to 5 MB, fetched whole; every stroke drawn every frame into a canvas capped at 2.4 MP | 13,715 stroke files (690 MB) in a tile pyramid, streamed per view, each tile painted once into an atlas |
+| a page | a scrolling document: navbar, painting box, information, footer | one fixed full-screen board that takes wheel, pinch, drag and keys |
+| build output | 86 files, 26 MB | 13,775 data files, 691 MB, plus the site |
+| repository | private, Söhne fonts committed | public and MIT (Shahfarzane/garden-of-earthly-delights), fonts kept out; the strokes panel links to it |
+| hosting | none configured yet; takes over mirage.nerd.ceo | the Cloudflare Worker `mirage` on mirage.nerd.ceo |
+
+A merge would share the design tokens and the navbar. The two painting runtimes have nothing in common: Mirage's draws a whole painting from one buffer, and the Garden's engine exists because 57.9 million strokes do not fit in one. What a merge would cost:
+
+- The public source. The Garden's code would move into a private repository that ships licensed fonts, so either its MIT release and the source link end, or Mirage goes public after its fonts leave the repository.
+- Size on every deploy. Each Mirage build would copy 691 MB and 13,800 files. Cloudflare allows 20,000 files per Worker version on the Free plan and 100,000 on Paid, so a second painting at this depth would not fit on Free.
+- Tooling. Mirage's dev server, prerenderer, linter and formatter would all need to skip the stroke data and the engine, as `vite.config.js` here already does for the watcher.
+- The first load. React and Mirage's shell would add script to a page whose content is one canvas.
+- The analyzer (`tools/`, Node with sharp) and its regeneration steps would live in a site's repository.
+
+Decision: the Garden stays its own project, and its interface takes Mirage's design exactly: Mirage's tokens, lozenges, navbar and menu, with a breadcrumb "Mirage / The Garden of Earthly Delights" whose first crumb leads to the Mirage index (`MIRAGE_URL` in `src/ui/ui.js`). Mirage already lists the Garden as an external work behind one constant, `GARDEN_URL` in its catalog. Both sit under one address without one repository: Cloudflare routes a path of Mirage's domain to the Garden's Worker (below).
+
+### The interface in Mirage's design
+
+Values come from klim-paintings' source, each cited with file and line at the top of `src/style.css`, and were checked against its running dev server's computed styles at 1440x900 and 390x844: lozenges 28 px high with 0 8px padding and 2 px corners, 5 px apart, 10 px above and below, 20 px margins (10 px on phones), the menu panel in the last two columns of twelve (three at 1366 and below, four at 1024 and below) on `#1c1c1c`, separators 1 px `#383838` with 5 px margins, and the colour mixes `#e2e2e2` to `#1c1c1c` of its black and white scheme. The type is Mirage's too, Söhne (Shahin, 2026-10-20: "since we wanna keep the same design as Klim, lets use whatever klim-paintings is using"), loaded as its `base.css` loads it from the untracked `fonts/` folder, with the menu and outward-link icons as glyphs of Söhne's icon face. A page loads Buch and the icon face, 47 kB, where Die Grotesk and Martina Plantijn took 243 kB.
+
+| here before | here now, in Mirage's terms |
+| --- | --- |
+| icon rail bottom right, ten buttons with tooltips | navbar: breadcrumbs "Mirage / The Garden of Earthly Delights" on the left; Exterior, Strokes and Sound lozenges and the menu on the right, wrapping under the menu below 1024 px and stacking beside the crumbs on phones, as Mirage's do |
+| story markers, living painting, varnish and full screen as icons, hidden on phones | menu items with an On or Off value, on every screen |
+| zoom out, zoom in, whole painting in the rail | three lozenges bottom right |
+| sound and strokes popovers above the rail | panels under the navbar in the right-hand columns; the toggles are lozenges that stay filled while on, as Mirage's Sound and Strokes |
+| story drawer full height on the right | a panel in the right-hand columns under the navbar (four of twelve, five at 1366, six at 1024), a sheet at the foot below 768 px |
+
+Checked with real input (CDP mouse, wheel, keys and pinch, no JavaScript clicks) at 1440x900, 1728x990 and 390x844: 41, 41 and 40 checks pass, covering every lozenge and menu item, the sound modes, the stroke view, arrow keys in the menu, Escape returning focus, drag, two-finger scroll, trackpad and touch pinch with the page left unscaled, the pan and zoom keys, hold L, a story opened from its marker and closed, the minimap and the wings. Away from the lozenges, `elementFromPoint` finds the canvas everywhere, the navbar row included.
+
+### The first visit
+
+Measured on the live site with a cold cache in Chrome for Testing at 1728x990, until every tile of the first view was painted:
+
+| | requests | MB | strokes | first contentful paint | full view |
+| --- | --- | --- | --- | --- | --- |
+| dpr 1 | 97 | 8.5 | 83 files, 7.7 MB (z0 to z3) | 220 to 248 ms | 1.18 to 1.21 s |
+| dpr 2, as on the MacBook | 317 | 24.0 | 303 files, 23.2 MB (z0 to z4) | 168 ms | 2.14 to 2.51 s |
+
+The 8.3 MB measured earlier is the dpr 1 case. On a Retina screen `renderLevel` picks z4 for the whole triptych, and a z4 tile needs every coarser file under it, so the first view costs three times as much. The stroke files go out uncompressed (`application/octet-stream`), and generic compression gains little: brotli at its best level saves 12 to 13% on them, splitting each record's 12 bytes into planes first saves 21%.
+
+Proposal, not built, biggest first:
+
+1. Show the first view one level coarser on dense screens, then refine. Request z3 for the opening whole-triptych view and z4 once it is complete: the dpr 1 figures, 8.5 MB and 97 requests, before the first full view at dpr 2 instead of 24 MB and 317, with the sharper level painting in afterwards over the coarser one as tiles already do. Pixels stay the analyzer's at every level.
+2. One file per level for z0 to z3 (83 files become 4), stored as byte planes with gzip and decoded by `DecompressionStream`: 7.7 MB of strokes become about 6.2 MB. The records after decoding are the same bytes, so the GPU twin is untouched.
+3. Load `effects.png` (0.43 MB) after the first full view; only the water, fire and sway effects use it.
+4. Version the data path (`/data/v1/strokes/...`) and serve it `immutable` for a year instead of `max-age=86400`, so a return visit after a day does not revalidate 300 files.
+
+### At mirage.nerd.ceo/garden/
+
+Shahin's call (2026-10-20): Mirage takes the root of mirage.nerd.ceo and the Garden lives at /garden/. The address is in one place, `site.config.js` (`HOST`, `BASE`).
+
+- Vite builds with `base: BASE` into a `garden/` folder of the Worker's assets: a Worker on a route serves the paths its folders mirror (Cloudflare, "Serving a subdirectory"). The app takes the base from `import.meta.env.BASE_URL` for every fetch of the scene, the effects, the strokes and the exterior. The manifest's URLs are relative, the canonical and preview addresses come from `site.config.js`, and the build writes `_headers` at the asset root with the `/garden/` paths.
+- `cloudflare.config.ts` drops the custom domain for two routes, mirage.nerd.ceo/garden (redirected to /garden/ by `auto-trailing-slash`) and mirage.nerd.ceo/garden/*, in the zone nerd.ceo. Cloudflare's custom domains page has a route on a path of a custom domain's host take that path, so Mirage's custom domain and these routes can share the host.
+- The Worker is renamed from `mirage` to `garden`, so deploying this branch creates a second Worker and leaves the live one alone.
+- The breadcrumb's "Mirage" and the menu's first item go to `/`, same origin and tab.
+- Checked on the dev server at /garden/: all 250 requests of a story deep link stay under /garden/, the real-input checks pass (42 at 1440x900 and 1728x990, 41 at 390x844, Söhne and the breadcrumb included), and `vite build` lays out `assets/garden/` with `_headers` at the asset root.
+
+The switch, when Shahin deploys (not done here):
+
+1. `npm run deploy` in this repo creates the Worker `garden` with its two routes. mirage.nerd.ceo stays on the old Worker `mirage`, which keeps serving the old Garden at the root, and /garden/ already goes to the new Worker.
+2. Mirage's deploy takes mirage.nerd.ceo as its custom domain. Either detach the domain from the old Worker `mirage` first, or name Mirage's Worker `mirage`, which replaces the old one in place, domain included.
+3. Delete the old Worker `mirage` if it is still there, and point Mirage's `GARDEN_URL` at /garden/.
+
+Old shared links such as mirage.nerd.ceo/#story=… will open Mirage's index after the switch. A redirect for them has to be in Mirage's page script, since a server never sees the hash. That is a follow-up for Mirage.
+
+Open question for Shahin: when to push and deploy this branch.
+
+## Round 8 (2026-10-20): the frame stays, the painting zooms
+
+Shahin: "the frame should stay fixed where it is and we can only zoom", meaning a trackpad pinch zooms the painting and never the frame. This replaces Round 2's infinite board, where the whole triptych could shrink to an object on the dark board.
+
+- At rest, the framed triptych fills the screen under the navbar, inside the margins, above a band as tall as the navbar for the zoom lozenges, as Mirage's painting box does (`Camera.layout`, `setBox` from `src/ui/ui.js`). The post pass draws the outer frame, the drop shadow and the board at that rest view, so they never move, and the painting through the frame's opening at the camera. Between the wings, their frames and hinges stay part of the painting and move with it. The lip shading follows the fixed opening.
+- The camera zooms in from rest and never out of it. It is clamped so the opening only ever shows painting, and every route goes through the same clamp: pinch as ctrl + wheel (Chrome, Firefox) and as gesture events (Safari), touch pinch, drag, two-finger scroll, arrow keys, `+`, `-`, `0`, double-click, the zoom lozenges, the minimap and story flights. A flight's zoom-out arc stops at rest. At rest the painting cannot pan, since it already fills the opening.
+- With the wings shut, the opening is the centre panel's and the shutters are clipped to it, so the exterior zooms inside the centre frame.
+- The living layer, story markers and taps stay inside the opening. Tiles are requested only for what it shows: at the Round 6 z7 view, 144 tiles instead of 176, filled in 32 frames instead of 38, none late.
+- Checked with CDP input at 1728x990: 30 of 30 checks. Trackpad pinch held the point under the fingers to 0.00 px. Screenshots of four strips of the frame stayed byte-identical through pinching, pinching out past rest, Safari gestures (dispatched from script, since Chrome cannot synthesize them, and every one prevented), drags and scrolls to all four edges, keys, double-click, the zoom-out lozenge, a story flight (the opening stayed on painting every frame) and the closed exterior. At 390x844 with touch, 8 of 8, the page never scaled. The interaction checks of Round 7 pass again: 43, 43 and 42.
+
+On a phone held upright, the framed triptych is short, about 205 px of an 844 px screen, so the zoomed painting is seen through that strip. Turning the phone fills it. Should the frame hug the screen instead, cropping the triptych at rest, that is Shahin's call.
+
+## Round 9 (2026-10-20): phones held upright, and the first view
+
+### The frame hugs an upright phone
+
+Shahin chose the hugging frame for upright phones. On portrait screens up to 768 px wide, the frame runs round the box under the navbar and the painting covers its opening. At 390x844 that is a 347x659 px opening where Round 8 left a 205 px strip. At rest the crop is the centre panel's middle: about 45,700 of the triptych's 154,280 world px in width, so the cavalcade round the Pool of Youth (42,300 across) just fits. That is the painting's namesake and its visual centre. A sideways pan at rest reaches the wings, and pinch and pan work as on desktop, inside the same clamp. The frame is drawn round the opening in screen space, the shutters swing behind it, and the whole-painting lozenge reads "Centre" there. Desktop and landscape screens keep the framed whole triptych.
+
+Testing on the phone sizes turned up two touch bugs, both fixed:
+
+- A finger that landed on a story marker or a lozenge gave the pinch to the browser, which scaled the page (`visualViewport.scale` 1.6). The interface layer now has `touch-action: none`, while the story text and the panels still scroll. A touch that starts on a marker is captured by the board, so it pans and pinches the painting, and a plain tap opens the story as anywhere else.
+- At rest on a phone, the central story circles are big enough to tap, so the tap that closed a panel also opened the Pool of Youth. A tap that closes a panel now only closes it.
+
+Checked with real input: the interaction suite passes at 390x844 (43), 768x1024 (43), 844x390 (44), 1440x900 (44) and 1728x990 (44). The fixed-frame checks pass at 390x844 and 768x1024 (15 each, with the sideways pan at rest, touch pinch, touch pan, pinching back to rest and the wings shut) and at 1728x990 (30).
+
+### Coarse first, then sharp: measured, and already the case
+
+Shahin approved Round 7's first proposal: request the first whole-triptych view one level coarser on dense screens, and sharpen in place once it is complete. Before building it, the first visit was measured again on a local production build (`vite preview`, the real stroke files), with the network held at 50 Mbps and 20 ms latency, cache off, at 1728x990:
+
+| | requests | MB | first paint | z3 view complete | z4 view complete |
+| --- | --- | --- | --- | --- | --- |
+| dpr 1 | 95 | 8.28 | 176 to 180 ms | 2.03 s | |
+| dpr 2, as shipped | 315 | 23.66 | 184 ms | 2.05 to 2.07 s | 4.57 s |
+| dpr 2, z4 held back until z3 is complete | 315 | 23.66 | 180 ms | 2.03 to 2.04 s | 5.15 to 5.19 s |
+
+The code already loads the coarse level first: the store fetches coarser files first, and a z4 tile not yet painted shows its z3 parent. So the complete z3 view arrives at dpr 2 only 20 to 30 ms after dpr 1. Round 7's "24 MB before the first full view" counted the moment the sharper level was complete; the complete coarse view was already there at 8 to 11.5 MB. Holding z4 back until z3 is done gains about 25 ms on the coarse view and costs 0.6 s on the sharp one, so it is not shipped. The approved behaviour, coarse first and then sharp in place, is the one the code has.
+
+With everything in this round, same conditions:
+
+| | requests | MB | first paint | complete view | sharp view |
+| --- | --- | --- | --- | --- | --- |
+| 1728x990, dpr 1 | 95 | 8.29 | 184 to 196 ms | 2.04 to 2.05 s (z3) | |
+| 1728x990, dpr 2 | 315 | 23.66 | 176 ms | 2.05 s (z3) | 4.56 to 4.59 s (z4, 220 files, 15.4 MB) |
+| 390x844 upright | 71 | 6.65 | 176 to 180 ms | 1.75 s (z3) | |
+
+The live site measured 1.18 to 1.21 s and 2.14 to 2.51 s in Round 7 over a faster real connection, so compare these rows with each other, not with those. The cuts still worth making are Round 7's second to fourth proposals: packed files per level, effects after the first view, and immutable versioned data.

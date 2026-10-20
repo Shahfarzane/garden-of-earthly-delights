@@ -37,7 +37,7 @@ export class ExteriorPainter {
     this.drawn = 0;
   }
 
-  async load(base = 'data/exterior/strokes') {
+  async load(base = `${import.meta.env.BASE_URL}data/exterior/strokes`) {
     const gl = this.gl;
     const jobs = [];
     for (let z = 0; z <= EXT_MAX_Z; z++) {

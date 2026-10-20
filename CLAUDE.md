@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Web app (live at https://mirage.nerd.ceo, public repo https://github.com/Shahfarzane/garden-of-earthly-delights) that repaints Bosch's "The Garden of Earthly Delights" with JavaScript brush strokes. Read `README.md` for architecture and the regeneration pipeline, `docs/plan.md` for decisions.
+Web app (live at https://mirage.nerd.ceo/garden/, public repo https://github.com/Shahfarzane/garden-of-earthly-delights) that repaints Bosch's "The Garden of Earthly Delights" with JavaScript brush strokes. Read `README.md` for architecture and the regeneration pipeline, `docs/plan.md` for decisions.
 
 ## Hard rule
 
@@ -11,12 +11,12 @@ Nothing on screen may be a decoded photograph of the painting. The scans feed on
 - Tile scans (pixel source of truth): `tiles/tile-x{0..5}-y{0..2}.jpg` (gitignored) or the folder in `BOSCH_TILES`; on Shahin's Mac they are in `/Users/shahin/Downloads/Original tiles`; upstream https://commons.wikimedia.org/wiki/Template:Tile_set/The_Garden_of_Earthly_Delights/grid
 - 18,000 px copies for eyeballing: `Bosch - The Garden of Earthly Delights/` in this folder (gitignored); upstream https://commons.wikimedia.org/wiki/File:The_Garden_of_earthly_delights.jpg
 - Story positions and sound zones: `data/places.json`, coordinates only, extracted once from the Bosch POI file Shahin supplied (that file and its museum texts are deliberately not in the repo or its history; never add them). Story titles and texts are original writing in `data/stories.json`. `tools/buildScene.js` joins the two into `public/data/scene.json`.
-- Hosting: https://mirage.nerd.ceo, a static Cloudflare Worker (`cloudflare.config.ts`), deployed with `npm run deploy` (the `cf` CLI).
+- Hosting: https://mirage.nerd.ceo/garden/, the static Cloudflare Worker `garden` on routes for that path (`cloudflare.config.ts`), deployed with `npm run deploy` (the `cf` CLI). Mirage's own Worker holds the domain's root. The address lives in `site.config.js` only; the app reads it back as `import.meta.env.BASE_URL`.
 
 ## Design reference
 
-- UI colours, text sizes and edges follow Klim Type Foundry's site, https://klim.co.nz (Shahin's pick, 2026-10-12). Values were read from its live computed CSS and are recorded as tokens at the top of `src/style.css`: black `#000` ground, `#1c1c1c` panels, text ramp `#fff` / `#c6c6c6` / `#8d8d8d` / `#555`, 14/21 px body, scale 14/16/18/24/36/48, 1px `#383838` rules, 2px corners, no shadows or blur.
-- Fonts: Die Grotesk (text) and Martina Plantijn (headings) by Klim, in `fonts/` (untracked, licensed: the site ships them under Shahin's web licence, the public repo must not).
+- The interface follows Mirage, Shahin's site for every painting he repaints (klim-paintings, a private repository), whose layout is taken from Klim Type Foundry's family pages (Shahin's call, 2026-10-20). Its tokens are copied with file and line citations at the top of `src/style.css`: black ground, colour mixes `#e2e2e2` to `#1c1c1c`, type 14/16/18/24/36/48 stepping down per breakpoint, spacing over a 1680/768/430 basis, 12/6 columns, 10px gutter, 20/10px margins, 28px lozenges 5px apart, 2px corners. Values were checked against its running dev server; check again there before changing them.
+- Fonts: Söhne by Klim (Buch, Kursiv, Halbfett, Mono, Ikon), as Mirage, in `fonts/` (untracked and licensed: Shahin handles the licence, and the public repo must not contain them).
 
 ## Invariants
 
