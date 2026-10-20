@@ -137,8 +137,7 @@ export class UI {
 
     // navbar: breadcrumbs on the left; the painting's buttons and the menu on the right
     this.crumbs = el('nav', { class: 'crumbs', 'aria-label': 'Breadcrumbs' }, `<ol>
-      <li><a class="lz" href="${MIRAGE_URL}"><span>Mirage</span></a></li>
-      <li><a class="lz" href="${import.meta.env.BASE_URL}" aria-current="page"><span>The Garden of Earthly Delights</span></a></li></ol>`);
+      <li><a class="lz" href="${MIRAGE_URL}"><span>Mirage</span></a></li></ol>`);
     this.bar = el('nav', { class: 'bar', 'aria-label': 'Painting' });
     const controls = el('div', { class: 'controls', role: 'toolbar', 'aria-label': 'Painting controls' });
     const lz = (html: string, fn: EventListener, attrs: Record<string, string> = {}) => {

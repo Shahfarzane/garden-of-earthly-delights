@@ -347,3 +347,7 @@ Verified, the JS at 9b0e6ae against the TypeScript:
 - Screenshots at 1728x990 and 390x844 (default, stroke view, menu, a story; reduced motion): 9 of 10 byte-identical. The 1728x990 story view differs in 90 px by at most 2 levels; two loads of the JS differ in 68 px the same way, from atlas slot placement.
 - Sprites at three sizes per palette and pose, the motion behaviours, the camera, the animator, the living layer at 13 views, the sound zones and 73 offline audio renders, hashed with seeded randomness: identical.
 - `dev/audio.html` and `dev/life.html` load from `.ts` without errors.
+
+## Round 11 (2026-10-20): the site name alone in the navbar
+
+Shahin asked for the painting's name to leave the navbar, on Mirage's painting pages and here. The breadcrumbs are now "Mirage" alone, still leading to the Mirage index (`src/ui/ui.ts`); the title stays in the page's `<title>` and the canvas's label. Mirage made the same change in its own repository.
