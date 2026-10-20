@@ -95,6 +95,10 @@ canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block;
 #paint.dragging { cursor: grabbing; }
 #life { pointer-events: none; }
 #ui { position: fixed; inset: 0; pointer-events: none; }
+/* a pinch that lands on a marker or a lozenge must zoom the painting, never the page; the story
+   text and the panels still scroll */
+#ui, #ui * { touch-action: none; }
+#ui .story .body, #ui .panel { touch-action: pan-y; }
 /* zero specificity, so a layer's own rule (the navbar, markers, closed panels) can make it click-through */
 :where(#ui) > * { pointer-events: auto; }
 button { font: inherit; line-height: normal; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
