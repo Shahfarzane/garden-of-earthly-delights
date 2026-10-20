@@ -3,14 +3,14 @@
 // Dark cracks: grey closing, accepted where the top-hat is inside a contrast band.
 // Bright cracks (on dark paint): grey opening, same idea, only in dark regions.
 
-function lum(b, i) { return 0.299 * b[i] + 0.587 * b[i + 1] + 0.114 * b[i + 2]; }
-function ramp(x, a, b) { return x <= a ? 0 : x >= b ? 1 : (x - a) / (b - a); }
+function lum(b: Uint8Array, i: number): number { return 0.299 * b[i] + 0.587 * b[i + 1] + 0.114 * b[i + 2]; }
+function ramp(x: number, a: number, b: number): number { return x <= a ? 0 : x >= b ? 1 : (x - a) / (b - a); }
 
 // Separable square min/max filter per channel, van Herk / Gil-Werman: O(1) per pixel for any radius.
-function line1D(f, n, rad, isMax, g, h, out) {
+function line1D(f: Uint8Array, n: number, rad: number, isMax: boolean, g: Uint8Array, h: Uint8Array, out: Uint8Array): void {
   const k = 2 * rad + 1;
   const m = n + 2 * rad; // padded length, edges replicated
-  const at = (i) => f[Math.max(0, Math.min(n - 1, i - rad))];
+  const at = (i: number) => f[Math.max(0, Math.min(n - 1, i - rad))];
   for (let i = 0; i < m; i++) {
     const v = at(i);
     g[i] = i % k === 0 ? v : (isMax ? Math.max(g[i - 1], v) : Math.min(g[i - 1], v));
@@ -25,7 +25,7 @@ function line1D(f, n, rad, isMax, g, h, out) {
   }
 }
 
-function morph(src, W, H, rad, isMax) {
+function morph(src: Uint8Array, W: number, H: number, rad: number, isMax: boolean): Uint8Array {
   const out = new Uint8Array(src.length);
   const L = Math.max(W, H);
   const f = new Uint8Array(L), o = new Uint8Array(L);
@@ -47,7 +47,7 @@ function morph(src, W, H, rad, isMax) {
 }
 
 // Light 3-tap binomial blur (twice) to hide the square structuring element.
-function soften(src, W, H, passes) {
+function soften(src: Uint8Array, W: number, H: number, passes: number): Uint8Array {
   let a = src;
   for (let p = 0; p < passes; p++) {
     const t = new Uint8Array(a.length), o = new Uint8Array(a.length);
@@ -64,7 +64,7 @@ function soften(src, W, H, passes) {
   return a;
 }
 
-export function decrack(src, W, H, rad = 2, k = 1) {
+export function decrack(src: Uint8Array, W: number, H: number, rad = 2, k = 1): Uint8Array {
   const passes = Math.max(1, Math.round(rad / 2));
   const closed = soften(morph(morph(src, W, H, rad, true), W, H, rad, false), W, H, passes);
   const opened = soften(morph(morph(src, W, H, rad, false), W, H, rad, true), W, H, passes);

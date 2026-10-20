@@ -23,17 +23,22 @@ export const FULL_Z = EXTERIOR ? 3 : 6; // deepest level that covers the whole p
 export const SRC_COLS = [0, 29952, 59904, 89856, 119808, 149760]; // x offsets
 export const SRC_ROWS = [0, 29212, 59164]; // y offsets
 
-export function levelScale(z) { return Math.pow(2, z - MAX_Z); }
-export function levelSize(z) {
+// A story point's hotspot at a deep level, in level px (tools/prepareDeep.ts), and the plan of
+// which deep tiles to paint: work/deep-plan.json, read by paint.ts.
+export interface Hotspot { id: string; title: string; x: number; y: number; r: number }
+export type DeepPlan = Record<string, { circles: Hotspot[]; paint: [number, number][] }>;
+
+export function levelScale(z: number): number { return Math.pow(2, z - MAX_Z); }
+export function levelSize(z: number): { w: number; h: number } {
   const s = levelScale(z);
   return { w: Math.ceil(WORLD_W * s), h: Math.ceil(WORLD_H * s) };
 }
-export function levelTiles(z) {
+export function levelTiles(z: number): { nx: number; ny: number } {
   const { w, h } = levelSize(z);
   return { nx: Math.ceil(w / TILE), ny: Math.ceil(h / TILE) };
 }
 
-export function targetPath(z, x, y) { return path.join(WORK, 'targets', String(z), `${x}_${y}.rgb`); }
-export function strokePath(z, x, y) { return path.join(OUT, 'strokes', String(z), `${x}_${y}.bin`); }
+export function targetPath(z: number, x: number, y: number): string { return path.join(WORK, 'targets', String(z), `${x}_${y}.rgb`); }
+export function strokePath(z: number, x: number, y: number): string { return path.join(OUT, 'strokes', String(z), `${x}_${y}.bin`); }
 
-export function ensureDir(p) { fs.mkdirSync(p, { recursive: true }); }
+export function ensureDir(p: string): void { fs.mkdirSync(p, { recursive: true }); }

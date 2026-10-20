@@ -3,7 +3,7 @@
 // read off gridded crops of the painting.
 import { drawItem } from '../life/sprites.js';
 import { flock, swimPath, wander, particles, leap } from '../life/motion.js';
-import { WORLD_W as W, WORLD_H as H } from '../world.js';
+import { WORLD_W as W, WORLD_H as H } from '../world.ts';
 
 const P = (x, y) => ({ x: x * W, y: y * H });
 const box = (x0, y0, x1, y1) => ({ x: x0 * W, y: y0 * H, w: (x1 - x0) * W, h: (y1 - y0) * H });

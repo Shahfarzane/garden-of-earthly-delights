@@ -1,7 +1,7 @@
 // Brings figures to life from rig data (src/living/rigs.js): displacement rigs (rotate,
 // translate, scale) are evaluated here and handed to the post shader; overlay rigs (eyes,
 // splash, glow) are drawn on the living layer's Canvas2D.
-import { WORLD_W as W, WORLD_H as H } from '../world.js';
+import { WORLD_W as W, WORLD_H as H } from '../world.ts';
 
 const TAU = Math.PI * 2;
 const KIND = { rotate: 1, translate: 2, scale: 3 };

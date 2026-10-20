@@ -1,6 +1,6 @@
 // Fetches stroke tile files and keeps them as instanced vertex arrays on the GPU.
-import { RECORD_BYTES } from '../shared/strokeModel.js';
-import { FULL_Z, levelTiles } from '../world.js';
+import { RECORD_BYTES } from '../shared/strokeModel.ts';
+import { FULL_Z, levelTiles } from '../world.ts';
 
 const MAX_INFLIGHT = 10;
 const GPU_BUDGET = (window.matchMedia('(pointer: coarse)').matches ? 160 : 512) * 1024 * 1024;

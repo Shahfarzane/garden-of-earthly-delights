@@ -5,40 +5,42 @@
 import sharp from 'sharp';
 import fs from 'node:fs';
 import path from 'node:path';
-import { decrack } from './decrack.js';
+import { decrack } from './decrack.ts';
 import {
   WORK, OUT, SOURCE_DIR, TILE, SRC_COLS, SRC_ROWS, WORLD_W,
   levelSize, levelScale, targetPath, ensureDir,
-} from './common.js';
+} from './common.ts';
+import type { DeepPlan, Hotspot } from './common.ts';
+import type { Poi, Scene } from '../src/scene.ts';
 
 sharp.cache(false);
 sharp.concurrency(4);
 
-const scene = JSON.parse(fs.readFileSync(path.join(OUT, 'scene.json'), 'utf8'));
+const scene: Scene = JSON.parse(fs.readFileSync(path.join(OUT, 'scene.json'), 'utf8'));
 const PAD = 1.15;
 // Deep levels keep the real craquelure: at this resolution the cracks are wide and
 // high-contrast, and the morphological filter posterizes the paint around them
 // (compared on the owl in the Fountain of Life, 2026-10-12). DEEP_DECRACK=1 restores it.
 const DECRACK = process.env.DEEP_DECRACK === '1';
 const LEVELS = [
-  { z: 7, pick: (p) => !p.overview, crackRad: 4 },
-  { z: 8, pick: (p) => !p.overview && p.r <= 0.03 * WORLD_W, crackRad: 8 },
+  { z: 7, pick: (p: Poi) => !p.overview, crackRad: 4 },
+  { z: 8, pick: (p: Poi) => !p.overview && p.r <= 0.03 * WORLD_W, crackRad: 8 },
 ];
 const only = process.argv[2] ? Number(process.argv[2]) : null;
 
 const SRC_W = [29952, 29952, 29952, 29952, 29952, 6787];
 const SRC_H = [29212, 29952, 29952];
 
-function rawPath(z, x, y) { return path.join(WORK, 'raw', String(z), `${x}_${y}.rgb`); }
+function rawPath(z: number, x: number, y: number): string { return path.join(WORK, 'raw', String(z), `${x}_${y}.rgb`); }
 
-const plan = fs.existsSync(path.join(WORK, 'deep-plan.json')) ? JSON.parse(fs.readFileSync(path.join(WORK, 'deep-plan.json'), 'utf8')) : {};
+const plan: DeepPlan = fs.existsSync(path.join(WORK, 'deep-plan.json')) ? JSON.parse(fs.readFileSync(path.join(WORK, 'deep-plan.json'), 'utf8')) : {};
 
 for (const L of LEVELS) {
   if (only !== null && L.z !== only) continue;
   const z = L.z, s = levelScale(z), shrink = 1 / s;
   const { w: LW, h: LH } = levelSize(z);
-  const circles = scene.pois.filter(L.pick).map((p) => ({ id: p.id, title: p.title, x: p.x * s, y: p.y * s, r: p.r * s * PAD }));
-  const paint = new Set();
+  const circles = scene.pois.filter(L.pick).map((p): Hotspot => ({ id: p.id, title: p.title, x: p.x * s, y: p.y * s, r: p.r * s * PAD }));
+  const paint = new Set<string>();
   for (const c of circles) {
     for (let ty = Math.floor((c.y - c.r) / TILE); ty <= Math.floor((c.y + c.r) / TILE); ty++) {
       for (let tx = Math.floor((c.x - c.r) / TILE); tx <= Math.floor((c.x + c.r) / TILE); tx++) {
@@ -58,9 +60,9 @@ for (const L of LEVELS) {
   console.log(`z${z}: ${circles.length} hotspots, ${paint.size} painted tiles, ${targets.size} target tiles`);
 
   // which source tiles feed each target tile
-  const srcRect = (col, row) => ({ x0: Math.round(SRC_COLS[col] * s), y0: Math.round(SRC_ROWS[row] * s), x1: Math.round((SRC_COLS[col] + SRC_W[col]) * s), y1: Math.round((SRC_ROWS[row] + SRC_H[row]) * s) });
-  const need = new Map(); // target key -> remaining source count
-  const bySource = new Map();
+  const srcRect = (col: number, row: number) => ({ x0: Math.round(SRC_COLS[col] * s), y0: Math.round(SRC_ROWS[row] * s), x1: Math.round((SRC_COLS[col] + SRC_W[col]) * s), y1: Math.round((SRC_ROWS[row] + SRC_H[row]) * s) });
+  const need = new Map<string, number>(); // target key -> remaining source count
+  const bySource = new Map<string, string[]>();
   for (const k of targets) {
     const [x, y] = k.split('_').map(Number);
     const tx0 = x * TILE, ty0 = y * TILE, tx1 = Math.min(LW, tx0 + TILE), ty1 = Math.min(LH, ty0 + TILE);
@@ -71,13 +73,13 @@ for (const L of LEVELS) {
         n++;
         const sk = `${col}_${row}`;
         if (!bySource.has(sk)) bySource.set(sk, []);
-        bySource.get(sk).push(k);
+        bySource.get(sk)!.push(k);
       }
     }
     need.set(k, n);
   }
   ensureDir(path.join(WORK, 'raw', String(z)));
-  const bufs = new Map();
+  const bufs = new Map<string, Buffer>();
   for (const [sk, keys] of bySource) {
     const [col, row] = sk.split('_').map(Number);
     const file = path.join(SOURCE_DIR, `tile-x${col}-y${row}.jpg`);
@@ -101,7 +103,7 @@ for (const L of LEVELS) {
           b[di] = data[si]; b[di + 1] = data[si + 1]; b[di + 2] = data[si + 2];
         }
       }
-      const left = need.get(k) - 1;
+      const left = need.get(k)! - 1;
       need.set(k, left);
       if (left === 0) { fs.writeFileSync(rawPath(z, x, y), b); bufs.delete(k); }
     }
@@ -113,11 +115,11 @@ for (const L of LEVELS) {
   const RW = TILE + 2 * pad;
   ensureDir(path.dirname(targetPath(z, 0, 0)));
   let done = 0;
-  const rawCache = new Map();
-  const loadRaw = (x, y) => {
+  const rawCache = new Map<string, Buffer | null>();
+  const loadRaw = (x: number, y: number) => {
     const k = `${x}_${y}`;
     if (!rawCache.has(k)) {
-      if (rawCache.size > 200) rawCache.delete(rawCache.keys().next().value);
+      if (rawCache.size > 200) rawCache.delete(rawCache.keys().next().value!);
       rawCache.set(k, targets.has(k) && fs.existsSync(rawPath(z, x, y)) ? fs.readFileSync(rawPath(z, x, y)) : null);
     }
     return rawCache.get(k);
@@ -132,7 +134,7 @@ for (const L of LEVELS) {
         let tx = Math.floor(gx / TILE), ty = Math.floor(gy / TILE);
         let src = loadRaw(tx, ty);
         if (!src) { // outside prepared tiles: replicate the own tile's edge
-          src = own;
+          src = own!;
           gx = Math.max(x * TILE, Math.min(x * TILE + TILE - 1, gx));
           gy = Math.max(y * TILE, Math.min(y * TILE + TILE - 1, gy));
           tx = x; ty = y;
@@ -148,6 +150,6 @@ for (const L of LEVELS) {
     if (++done % 200 === 0) process.stdout.write(`\r  decrack ${done}/${targets.size}`);
   }
   console.log(`\r  decrack ${done}/${targets.size}`);
-  plan[z] = { circles, paint: [...paint].map((k) => k.split('_').map(Number)) };
+  plan[z] = { circles, paint: [...paint].map((k) => k.split('_').map(Number) as [number, number]) };
   fs.writeFileSync(path.join(WORK, 'deep-plan.json'), JSON.stringify(plan));
 }

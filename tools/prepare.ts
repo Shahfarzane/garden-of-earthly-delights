@@ -3,12 +3,12 @@
 import sharp from 'sharp';
 import fs from 'node:fs';
 import path from 'node:path';
-import { decrack } from './decrack.js';
-import { cutTiles, halve } from './pyramid.js';
+import { decrack } from './decrack.ts';
+import { cutTiles, halve } from './pyramid.ts';
 import {
   WORK, SOURCE_DIR, FULL_Z, TILE, SRC_COLS, SRC_ROWS,
   levelSize, levelTiles, targetPath, ensureDir,
-} from './common.js';
+} from './common.ts';
 
 sharp.cache(false);
 sharp.concurrency(4);
@@ -45,7 +45,7 @@ for (let row = 0; row < 3; row++) {
 }
 
 // Craquelure removal on the stitched level, in overlapping strips to bound memory.
-function decrackImage(buf, W, H, rad) {
+function decrackImage(buf: Buffer, W: number, H: number, rad: number): Buffer {
   const out = Buffer.alloc(buf.length);
   const strip = 512, pad = rad * 4 + 4;
   for (let y0 = 0; y0 < H; y0 += strip) {

@@ -3,8 +3,8 @@
 // the same analyzer as the interior (WORLD=exterior, see tools/prepareExterior.js).
 import { createProgram, createQuad } from './gl.js';
 import { STROKE_VS, STROKE_FS } from './shaders.js';
-import { RECORD_BYTES } from '../shared/strokeModel.js';
-import { GROUND, TILE } from '../world.js';
+import { RECORD_BYTES } from '../shared/strokeModel.ts';
+import { GROUND, TILE } from '../world.ts';
 
 export const EXT_W = 1402; // two painted areas side by side, source px
 export const EXT_H = 1700;

@@ -1,5 +1,5 @@
 import { defineConfig, defineWorker, triggers } from '@cloudflare/config';
-import { ZONE, HOST, BASE } from './site.config.js';
+import { ZONE, HOST, BASE } from './site.config.ts';
 
 // Static site under a path of Mirage's domain: Vite builds into the assets folder under BASE,
 // Cloudflare serves it from the edge. Mirage's own Worker holds the domain's root as a custom

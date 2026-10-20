@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite';
+import type { Plugin } from 'vite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadAndParseConfig } from '@cloudflare/config';
+import type { ParsedInputConfig } from '@cloudflare/config';
 import { cleanBuildOutputDir, getWorkerAssetsDir, writeRootConfig, writeWorkerConfig } from '@cloudflare/build-output-utils';
-import { HOST, BASE } from './site.config.js';
+import { HOST, BASE } from './site.config.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url)); // the folder name has spaces
 
@@ -16,7 +18,7 @@ const watch = { ignored: ['**/public/data/strokes/**', '**/public/data/exterior/
 
 // Unwatched public files are invisible to Vite once created after startup, so stroke data
 // is served straight from disk, with real 404s instead of the index.html fallback.
-function strokeData() {
+function strokeData(): Plugin {
   const dataDir = path.resolve('public/data');
   return {
     name: 'stroke-data',
@@ -38,7 +40,7 @@ function strokeData() {
 }
 
 // The page's canonical and link-preview addresses: %SITE_URL% in index.html.
-function siteUrl() {
+function siteUrl(): Plugin {
   return { name: 'site-url', transformIndexHtml: (html) => html.replaceAll('%SITE_URL%', `https://${HOST}${BASE}`) };
 }
 
@@ -59,9 +61,9 @@ ${BASE}data/*
 // `vite build` writes Cloudflare's Build Output (read by `cf deploy`): the site goes into the
 // Worker's assets folder under BASE, since a Worker on a route serves the path the folders mirror,
 // and the worker and root configs come from cloudflare.config.ts via Cloudflare's own writers.
-function cloudflareOutput(mode) {
+function cloudflareOutput(mode: string): Plugin {
   const ctx = { isPreview: false, mode };
-  let parsed;
+  let parsed: ParsedInputConfig;
   return {
     name: 'cloudflare-output',
     apply: 'build',
@@ -72,8 +74,10 @@ function cloudflareOutput(mode) {
     },
     async closeBundle() {
       fs.writeFileSync(path.join(getWorkerAssetsDir(root), '_headers'), HEADERS);
-      await writeWorkerConfig({ root, config: parsed.worker });
-      await writeRootConfig(root, parsed.settings, ctx);
+      await writeWorkerConfig({ root, config: parsed.worker! }); // cloudflare.config.ts always defines it
+      // The parsed config has no `settings` (account settings are read by loadAndParseConfigSettings)
+      // and cloudflare.config.ts declares none: the root config holds the build context only.
+      await writeRootConfig(root, undefined, ctx);
     },
   };
 }

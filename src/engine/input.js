@@ -1,5 +1,5 @@
 // Pointer, wheel, touch and keyboard navigation for the camera.
-import { WORLD_W, WORLD_H } from '../world.js';
+import { WORLD_W, WORLD_H } from '../world.ts';
 
 export function attachInput(el, camera, { onTap, onActivity, isEnabled = () => true } = {}) {
   const pointers = new Map();

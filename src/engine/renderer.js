@@ -3,7 +3,7 @@ import { createProgram, createQuad, createTexture, createFramebuffer } from './g
 import { TILE_VS, TILE_FS } from './shaders.js';
 import { StrokeStore } from './strokeStore.js';
 import { TileCache, tileWorldRect } from './tiles.js';
-import { levelTiles, MAX_Z, TILE } from '../world.js';
+import { levelTiles, MAX_Z, TILE } from '../world.ts';
 
 const Z_RENDER_MAX = 11;
 

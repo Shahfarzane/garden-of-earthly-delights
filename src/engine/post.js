@@ -1,7 +1,7 @@
 // Post pass: brings the painted scene to life (water, fire, foliage, sky, animated figures),
 // ages it (craquelure, varnish), and paints the frames, hinges and the dark board around it.
 import { createProgram } from './gl.js';
-import { WORLD_W, WORLD_H } from '../world.js';
+import { WORLD_W, WORLD_H } from '../world.ts';
 
 const VS = `#version 300 es
 layout(location=0) in vec2 a_corner;

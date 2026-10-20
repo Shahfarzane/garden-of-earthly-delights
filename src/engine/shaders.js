@@ -1,6 +1,6 @@
 // GLSL for the stroke painter and the compositor.
 // The stroke footprint mirrors coverageLocal() in src/shared/strokeModel.js exactly.
-import { SOFT_FRAC, MIN_SOFT, BRISTLE_DEPTH, DRY_DEPTH, POS_OFFSET, POS_SCALE } from '../shared/strokeModel.js';
+import { SOFT_FRAC, MIN_SOFT, BRISTLE_DEPTH, DRY_DEPTH, POS_OFFSET, POS_SCALE } from '../shared/strokeModel.ts';
 
 const f = (x) => (Number.isInteger(x) ? x.toFixed(1) : String(x));
 

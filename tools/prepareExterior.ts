@@ -1,16 +1,16 @@
 // Closed exterior ("Creation of the World"): crop the two painted areas inside the inner
 // gilt lines of the Commons photo, set them side by side, and cut the level pyramid.
-// Usage: WORLD=exterior node tools/prepareExterior.js <photo.jpg>
+// Usage: WORLD=exterior node tools/prepareExterior.ts <photo.jpg>
 // Source: https://commons.wikimedia.org/wiki/File:El_Bosco_-_Tr%C3%ADptico_del_Jard%C3%ADn_de_las_delicias.jpg
 // (1806 x 1920, public domain, sha1 ac1a5f789ae2e611b5dcdaece5a4ceff2b2b5caa)
 import sharp from 'sharp';
 import path from 'node:path';
-import { WORK, WORLD_W, WORLD_H, FULL_Z, levelSize, ensureDir } from './common.js';
-import { cutTiles, halve } from './pyramid.js';
+import { WORK, WORLD_W, WORLD_H, FULL_Z, levelSize, ensureDir } from './common.ts';
+import { cutTiles, halve } from './pyramid.ts';
 
 if (process.env.WORLD !== 'exterior') throw new Error('run with WORLD=exterior');
 const src = process.argv[2];
-if (!src) throw new Error('usage: WORLD=exterior node tools/prepareExterior.js <photo.jpg>');
+if (!src) throw new Error('usage: WORLD=exterior node tools/prepareExterior.ts <photo.jpg>');
 
 // painted areas measured from the gilt lines (column/row profiles of warm bright pixels)
 const LEFT = { left: 104, top: 111, width: 700, height: 1700 };

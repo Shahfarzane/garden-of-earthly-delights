@@ -4,7 +4,7 @@
 // (normalized triptych coords, read off gridded crops), so blue fruit or pink flesh never ripple.
 import sharp from 'sharp';
 import path from 'node:path';
-import { WORK, OUT, ensureDir } from './common.js';
+import { WORK, OUT, ensureDir } from './common.ts';
 
 const src = path.join(WORK, 'preview', 'target_z4.png');
 const { data: full, info } = await sharp(src).raw().toBuffer({ resolveWithObject: true });
@@ -20,7 +20,7 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) for (let c = 0; c < 3; c
   img[(y * W + x) * 3 + c] = s / n;
 }
 
-function boxBlur(a, C, r) {
+function boxBlur(a: Float32Array, C: number, r: number): Float32Array {
   const t = new Float32Array(a.length), o = new Float32Array(a.length);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) for (let c = 0; c < C; c++) {
     let s = 0, n = 0;
@@ -41,7 +41,7 @@ const sq = boxBlur(lum.map((v) => v * v), 1, 2);
 const mean2 = boxBlur(lum, 1, 2);
 const wideMean = boxBlur(lum, 1, 10);
 
-const inPoly = (x, y, poly) => {
+const inPoly = (x: number, y: number, poly: readonly number[][]) => {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const [xi, yi] = poly[i], [xj, yj] = poly[j];
@@ -49,8 +49,8 @@ const inPoly = (x, y, poly) => {
   }
   return inside;
 };
-const inEllipse = (x, y, [cx, cy, rx, ry]) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
-const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+const inEllipse = (x: number, y: number, [cx, cy, rx, ry]: readonly number[]) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
+const rect = (x0: number, y0: number, x1: number, y1: number) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 
 // ---- regions (normalized triptych coordinates) ----
 const WATER = [
@@ -130,7 +130,7 @@ for (let py = 0; py < H; py++) {
   }
 }
 // clean speckle (open = erode then dilate on a 3x3), then feather
-function open3(a) {
+function open3(a: Float32Array): Float32Array {
   const e = new Float32Array(a.length), d = new Float32Array(a.length);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     let mn = Infinity; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = Math.min(W - 1, Math.max(0, x + dx)), yy = Math.min(H - 1, Math.max(0, y + dy)); mn = Math.min(mn, a[yy * W + xx]); }

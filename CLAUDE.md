@@ -10,8 +10,8 @@ Nothing on screen may be a decoded photograph of the painting. The scans feed on
 
 - Tile scans (pixel source of truth): `tiles/tile-x{0..5}-y{0..2}.jpg` (gitignored) or the folder in `BOSCH_TILES`; on Shahin's Mac they are in `/Users/shahin/Downloads/Original tiles`; upstream https://commons.wikimedia.org/wiki/Template:Tile_set/The_Garden_of_Earthly_Delights/grid
 - 18,000 px copies for eyeballing: `Bosch - The Garden of Earthly Delights/` in this folder (gitignored); upstream https://commons.wikimedia.org/wiki/File:The_Garden_of_earthly_delights.jpg
-- Story positions and sound zones: `data/places.json`, coordinates only, extracted once from the Bosch POI file Shahin supplied (that file and its museum texts are deliberately not in the repo or its history; never add them). Story titles and texts are original writing in `data/stories.json`. `tools/buildScene.js` joins the two into `public/data/scene.json`.
-- Hosting: https://mirage.nerd.ceo/garden/, the static Cloudflare Worker `garden` on routes for that path (`cloudflare.config.ts`), deployed with `npm run deploy` (the `cf` CLI). Mirage's own Worker holds the domain's root. The address lives in `site.config.js` only; the app reads it back as `import.meta.env.BASE_URL`.
+- Story positions and sound zones: `data/places.json`, coordinates only, extracted once from the Bosch POI file Shahin supplied (that file and its museum texts are deliberately not in the repo or its history; never add them). Story titles and texts are original writing in `data/stories.json`. `tools/buildScene.ts` joins the two into `public/data/scene.json`.
+- Hosting: https://mirage.nerd.ceo/garden/, the static Cloudflare Worker `garden` on routes for that path (`cloudflare.config.ts`), deployed with `npm run deploy` (the `cf` CLI). Mirage's own Worker holds the domain's root. The address lives in `site.config.ts` only; the app reads it back as `import.meta.env.BASE_URL`.
 
 ## Design reference
 
@@ -20,7 +20,7 @@ Nothing on screen may be a decoded photograph of the painting. The scans feed on
 
 ## Invariants
 
-- `src/shared/strokeModel.js` (CPU) and `STROKE_FS` in `src/engine/shaders.js` (GPU) must stay in lockstep; the analyzer relies on simulating exactly what the browser paints.
+- `src/shared/strokeModel.ts` (CPU) and `STROKE_FS` in `src/engine/shaders.js` (GPU) must stay in lockstep; the analyzer relies on simulating exactly what the browser paints.
 - World units are source-scan pixels (156,547 x 89,116). Level z has scale 2^(z-9); tiles are 256 px.
 - `public/data/strokes/`, `public/data/exterior/` and `work/` are generated and gitignored.
 - The repo is public (MIT for the code). Keep personal paths, the museum texts, the fonts and the scans out of it.

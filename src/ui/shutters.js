@@ -4,7 +4,7 @@
 // A shutter's back face is a capture of its freshly painted wing, so when it opens again it
 // lands exactly on the live painting underneath.
 import { ExteriorPainter, EXT_W, EXT_H, EXT_SPLIT } from '../engine/exteriorPainter.js';
-import { WORLD_W, WORLD_H } from '../world.js';
+import { WORLD_W, WORLD_H } from '../world.ts';
 
 const SWING_MS = 2600;
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);

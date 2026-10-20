@@ -14,14 +14,18 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "prepare-sources": "node tools/prepare.js",
-    "paint": "node tools/paint.js",
+    "typecheck": "tsc -b",
+    "check": "npm run typecheck && npm run build",
+    "prepare-sources": "node tools/prepare.ts",
+    "paint": "node tools/paint.ts",
     "deploy": "cf deploy"
   },
   "devDependencies": {
     "@cloudflare/build-output-utils": "^0.9.0",
     "@cloudflare/config": "^0.24.1",
+    "@types/node": "^24.19.2",
     "sharp": "^0.35.5",
+    "typescript": "^7.0.2",
     "vite": "^8.3.4"
   }
 }

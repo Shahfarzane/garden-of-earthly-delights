@@ -8,7 +8,7 @@
 // view of `framed`: the open triptych, or the centre panel with the wings shut) only ever shows
 // painting. On an upright phone the frame hugs the box instead and the painting covers its
 // opening, cropped at rest to the centre panel's middle (Shahin, 2026-10-20).
-import { WORLD_W, WORLD_H } from '../world.js';
+import { WORLD_W, WORLD_H } from '../world.ts';
 
 const MAX_SCALE = 2.0; // CSS px per world px: deep brushwork
 const RHO = 1.4;

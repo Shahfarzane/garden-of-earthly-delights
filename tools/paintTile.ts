@@ -3,35 +3,37 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   TILE, levelSize, levelTiles, targetPath, strokePath, ensureDir, WORK,
-} from './common.js';
-import { encodeStrokes, decodeStroke, RECORD_BYTES, quantize } from '../src/shared/strokeModel.js';
-import { paintStroke } from './raster.js';
+} from './common.ts';
+import { encodeStrokes, decodeStroke, RECORD_BYTES, quantize } from '../src/shared/strokeModel.ts';
+import type { Stroke } from '../src/shared/strokeModel.ts';
+import { paintStroke } from './raster.ts';
 
 export const GROUND = [214, 200, 168]; // chalk ground with a warm imprimatura
 export const M = 48; // work margin around the tile, level px
 export const STROKE_REACH = 40; // max distance a stroke extends past its tile, level px
 
 // Brush plan per level: radii in level px with their error thresholds.
-export function brushPlan(z) {
+export type BrushPlan = [radius: number, tau: number][];
+export function brushPlan(z: number): BrushPlan {
   if (process.env.PLAN) { const p = JSON.parse(process.env.PLAN); return p[z] || p.d; }
   if (z === 0) return [[16, 10], [8, 10], [4, 12], [2, 14], [1.25, 16]];
   return [[4, 16], [2, 18], [1.25, 22]];
 }
 
 // ---------- caches ----------
-const targetCache = new Map();
-function loadTarget(z, x, y) {
+const targetCache = new Map<string, Buffer>();
+function loadTarget(z: number, x: number, y: number): Buffer {
   const key = `${z}/${x}_${y}`;
   let t = targetCache.get(key);
   if (!t) {
     t = fs.readFileSync(targetPath(z, x, y));
-    if (targetCache.size > 64) targetCache.delete(targetCache.keys().next().value);
+    if (targetCache.size > 64) targetCache.delete(targetCache.keys().next().value!);
     targetCache.set(key, t);
   }
   return t;
 }
-const strokeCache = new Map();
-export function loadStrokes(z, x, y) {
+const strokeCache = new Map<string, Stroke[] | null>();
+export function loadStrokes(z: number, x: number, y: number): Stroke[] | null {
   const key = `${z}/${x}_${y}`;
   let s = strokeCache.get(key);
   if (s === undefined) {
@@ -41,17 +43,17 @@ export function loadStrokes(z, x, y) {
       const buf = fs.readFileSync(p);
       const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
       const n = buf.byteLength / RECORD_BYTES;
-      s = new Array(n);
+      s = new Array<Stroke>(n);
       for (let i = 0; i < n; i++) s[i] = decodeStroke(dv, i, x * TILE, y * TILE);
     }
-    if (strokeCache.size > 256) strokeCache.delete(strokeCache.keys().next().value);
+    if (strokeCache.size > 256) strokeCache.delete(strokeCache.keys().next().value!);
     strokeCache.set(key, s);
   }
   return s;
 }
 
 // Region of level z, origin (rx, ry), size rw x rh, clamped to the level bounds.
-function loadTargetRegion(z, rx, ry, rw, rh) {
+function loadTargetRegion(z: number, rx: number, ry: number, rw: number, rh: number): Float32Array {
   const { w, h } = levelSize(z);
   const out = new Float32Array(rw * rh * 3);
   for (let y = 0; y < rh; y++) {
@@ -69,7 +71,7 @@ function loadTargetRegion(z, rx, ry, rw, rh) {
 }
 
 // Paint every stored stroke of levels < z that touches the region, in the order the browser uses.
-export function renderAncestors(canvas, z, rx, ry, rw, rh, opts = {}) {
+export function renderAncestors(canvas: Float32Array, z: number, rx: number, ry: number, rw: number, rh: number, opts: { fromZ?: number } = {}): void {
   const fromZ = opts.fromZ ?? 0;
   for (let za = fromZ; za < z; za++) {
     const scale = Math.pow(2, z - za);
@@ -90,7 +92,7 @@ export function renderAncestors(canvas, z, rx, ry, rw, rh, opts = {}) {
 }
 
 // ---------- image helpers ----------
-function gaussKernel(sigma) {
+function gaussKernel(sigma: number): { k: Float32Array; rad: number } {
   const rad = Math.max(1, Math.ceil(sigma * 2.5));
   const k = new Float32Array(2 * rad + 1);
   let sum = 0;
@@ -98,7 +100,7 @@ function gaussKernel(sigma) {
   for (let i = 0; i < k.length; i++) k[i] /= sum;
   return { k, rad };
 }
-function blur(src, W, H, C, sigma) {
+function blur(src: Float32Array, W: number, H: number, C: number, sigma: number): Float32Array {
   if (sigma < 0.3) return src.slice();
   const { k, rad } = gaussKernel(sigma);
   const tmp = new Float32Array(src.length), out = new Float32Array(src.length);
@@ -122,7 +124,8 @@ function blur(src, W, H, C, sigma) {
 }
 
 // Edge-tangent field from the smoothed structure tensor of luminance.
-function tangentField(ref, W, H, sigma) {
+interface TangentField { ang: Float32Array; coh: Float32Array }
+function tangentField(ref: Float32Array, W: number, H: number, sigma: number): TangentField {
   const lum = new Float32Array(W * H);
   for (let i = 0; i < W * H; i++) lum[i] = 0.299 * ref[i * 3] + 0.587 * ref[i * 3 + 1] + 0.114 * ref[i * 3 + 2];
   const J = new Float32Array(W * H * 3);
@@ -146,7 +149,7 @@ function tangentField(ref, W, H, sigma) {
   return { ang, coh };
 }
 
-function mulberry32(a) {
+function mulberry32(a: number): () => number {
   return function () {
     a |= 0; a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
@@ -155,18 +158,19 @@ function mulberry32(a) {
   };
 }
 
-function dist3(a, i, b, j) {
+function dist3(a: Float32Array, i: number, b: Float32Array, j: number): number {
   const d0 = a[i] - b[j], d1 = a[i + 1] - b[j + 1], d2 = a[i + 2] - b[j + 2];
   return Math.sqrt(d0 * d0 + d1 * d1 + d2 * d2);
 }
-function distC(a, i, c) {
+function distC(a: Float32Array, i: number, c: readonly number[]): number {
   const d0 = a[i] - c[0], d1 = a[i + 1] - c[1], d2 = a[i + 2] - c[2];
   return Math.sqrt(d0 * d0 + d1 * d1 + d2 * d2);
 }
 
 // Trace a stroke both ways along the edge tangent from (x0, y0); returns polyline points.
-function trace(x0, y0, R, ref, canvas, field, W, H, color, maxSide) {
-  const pts = [[x0, y0]];
+type Point = [number, number];
+function trace(x0: number, y0: number, R: number, ref: Float32Array, canvas: Float32Array, field: TangentField, W: number, H: number, color: readonly number[], maxSide: number): Point[] {
+  const pts: Point[] = [[x0, y0]];
   for (const dirSign of [1, -1]) {
     let x = x0, y = y0;
     let a0 = field.ang[(Math.round(y0) * W + Math.round(x0))];
@@ -195,7 +199,8 @@ function trace(x0, y0, R, ref, canvas, field, W, H, color, maxSide) {
   return pts;
 }
 
-function fitArc(pts, field, W) {
+type Arc = Pick<Stroke, 'cx' | 'cy' | 'angle' | 'len' | 'bend'>;
+function fitArc(pts: readonly Point[], field: TangentField, W: number): Arc {
   if (pts.length === 1) {
     const [x, y] = pts[0];
     return { cx: x, cy: y, angle: field.ang[Math.round(y) * W + Math.round(x)], len: 0, bend: 0 };
@@ -236,7 +241,7 @@ function fitArc(pts, field, W) {
   return { cx, cy, angle: meanA, len: total, bend };
 }
 
-function psnr(a, b, W, H, x0, y0, x1, y1) {
+function psnr(a: Float32Array, b: Float32Array, W: number, H: number, x0: number, y0: number, x1: number, y1: number): number {
   let se = 0, n = 0;
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
     const i = (y * W + x) * 3;
@@ -252,7 +257,7 @@ const STOP_DIFF = Number(process.env.STOP_DIFF || 34);
 const TAU_LOW = Number(process.env.TAU_LOW || 7);
 
 // Local contrast energy: mean |target - blur(target)| around each pixel.
-function activity(target, W, H, R) {
+function activity(target: Float32Array, W: number, H: number, R: number): Float32Array {
   const b = blur(target, W, H, 3, Math.max(1, R));
   const d = new Float32Array(W * H);
   for (let i = 0; i < W * H; i++) d[i] = dist3(target, i * 3, b, i * 3);
@@ -260,7 +265,15 @@ function activity(target, W, H, R) {
 }
 
 // ---------- main entry ----------
-export function paintTile(z, tx, ty, opts = {}) {
+export interface PaintOptions {
+  sim?: boolean;
+  weight?: Float32Array | null;
+  skipEmpty?: boolean;
+  plan?: BrushPlan;
+  dry?: boolean;
+}
+export interface PaintResult { z: number; tx: number; ty: number; strokes: number; bytes: number; before: number; after: number; afterB: number }
+export function paintTile(z: number, tx: number, ty: number, opts: PaintOptions = {}): PaintResult {
   const rx = tx * TILE - M, ry = ty * TILE - M;
   const W = TILE + 2 * M, H = TILE + 2 * M;
   const target = loadTargetRegion(z, rx, ry, W, H);
@@ -271,7 +284,7 @@ export function paintTile(z, tx, ty, opts = {}) {
 
   const rand = mulberry32((z * 73856093) ^ (tx * 19349663) ^ (ty * 83492791));
   const weight = opts.weight || null; // optional per-pixel 0..1 mask (hotspot falloff)
-  const all = [];
+  const all: Stroke[] = [];
   const plan = opts.plan || brushPlan(z);
   for (const [R, tau] of plan) {
     const ref = blur(target, W, H, 3, Math.max(0, R * 0.5 - 0.25));
@@ -286,7 +299,7 @@ export function paintTile(z, tx, ty, opts = {}) {
     const g = Math.max(1, Math.ceil(R * GRID_K));
     // texture masking: busy areas hide error, smooth areas reveal it
     const act = activity(target, W, H, R);
-    const layer = [];
+    const layer: Stroke[] = [];
     for (let gy = M; gy < M + TILE; gy += g) {
       for (let gx = M; gx < M + TILE; gx += g) {
         let sum = 0, sumL = 0, n = 0, best = -1, bx = gx, by = gy;

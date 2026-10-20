@@ -1,7 +1,7 @@
 // The interface around the painting, in Mirage's design (docs/plan.md, Round 7): breadcrumbs back to
 // the Mirage index, the painting's buttons and the menu top right, zoom bottom right, quiet story
 // markers, a story drawer, the sound and strokes panels and a minimap.
-import { WORLD_W, WORLD_H } from '../world.js';
+import { WORLD_W, WORLD_H } from '../world.ts';
 
 // The Mirage index: the root of the site the Garden is a path of (site.config.js).
 export const MIRAGE_URL = '/';

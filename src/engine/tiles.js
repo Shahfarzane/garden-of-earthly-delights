@@ -2,8 +2,8 @@
 // and provides draw rects (with ancestor fallback) for the compositor.
 import { createProgram, createTexture, createFramebuffer } from './gl.js';
 import { STROKE_VS, STROKE_FS, FILL_VS, FILL_FS } from './shaders.js';
-import { RECORD_BYTES } from '../shared/strokeModel.js';
-import { TILE, GROUND, levelTiles, WORLD_W, WORLD_H, MAX_Z } from '../world.js';
+import { RECORD_BYTES } from '../shared/strokeModel.ts';
+import { TILE, GROUND, levelTiles, WORLD_W, WORLD_H, MAX_Z } from '../world.ts';
 import { FrameBudget } from './budget.js';
 
 export const BORDER = 4;

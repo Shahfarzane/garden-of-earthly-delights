@@ -1,15 +1,15 @@
 // Rebuild public/data/strokes/manifest.json (which deep-level tiles hold strokes) and
-// stats.json (exact stroke counts, shown in the app's strokes panel). paint.js writes the
+// stats.json (exact stroke counts, shown in the app's strokes panel). paint.ts writes the
 // manifest at the end of a run; this makes tiles from a run still in progress usable.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, OUT, FULL_Z } from './common.js';
-import { RECORD_BYTES } from '../src/shared/strokeModel.js';
+import { ROOT, OUT, FULL_Z } from './common.ts';
+import { RECORD_BYTES } from '../src/shared/strokeModel.ts';
 
 const dir = path.join(OUT, 'strokes');
 const levels = fs.readdirSync(dir).filter((n) => /^\d+$/.test(n)).map(Number).sort((a, b) => a - b);
-const manifest = { deep: {} };
-const perLevel = {};
+const manifest: { deep: Record<number, string[]> } = { deep: {} };
+const perLevel: Record<number, number> = {};
 for (const z of levels) {
   const files = fs.readdirSync(path.join(dir, String(z))).filter((f) => f.endsWith('.bin'));
   let n = 0;

@@ -1,10 +1,10 @@
 // Level pyramid helpers shared by the interior and exterior preparation.
 import fs from 'node:fs';
 import path from 'node:path';
-import { TILE, levelTiles, targetPath, ensureDir } from './common.js';
+import { TILE, levelTiles, targetPath, ensureDir } from './common.ts';
 
 // Cut a level image into 256 px raw RGB tiles, replicating edges past the image.
-export function cutTiles(level, buf, w, h) {
+export function cutTiles(level: number, buf: Buffer, w: number, h: number): { nx: number; ny: number } {
   const { nx, ny } = levelTiles(level);
   ensureDir(path.dirname(targetPath(level, 0, 0)));
   const tile = Buffer.alloc(TILE * TILE * 3);
@@ -25,7 +25,7 @@ export function cutTiles(level, buf, w, h) {
 }
 
 // 2x box reduction, odd edges replicate.
-export function halve(buf, w, h) {
+export function halve(buf: Buffer, w: number, h: number): { buf: Buffer<ArrayBuffer>; w: number; h: number } {
   const w2 = Math.ceil(w / 2), h2 = Math.ceil(h / 2);
   const out = Buffer.alloc(w2 * h2 * 3);
   for (let y = 0; y < h2; y++) {

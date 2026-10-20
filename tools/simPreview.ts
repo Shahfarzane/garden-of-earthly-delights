@@ -1,9 +1,9 @@
 // Assemble simulated tiles and target tiles of one level into side-by-side PNGs.
-// Usage: node tools/simPreview.js z x0 y0 x1 y1 (normalized region) out.png
+// Usage: node tools/simPreview.ts z x0 y0 x1 y1 (normalized region) out.png
 import sharp from 'sharp';
 import fs from 'node:fs';
 import path from 'node:path';
-import { TILE, levelSize, targetPath, WORK } from './common.js';
+import { TILE, levelSize, targetPath, WORK } from './common.ts';
 
 const [z, nx0, ny0, nx1, ny1] = process.argv.slice(2, 7).map(Number);
 const out = process.argv[7] || path.join(WORK, 'preview', `sim_z${z}.png`);

@@ -1,10 +1,11 @@
 // CPU twin of the WebGL stroke painter. Same footprint, same blend ("over" in sRGB).
-import { coverageLocal, strokeExtent } from '../src/shared/strokeModel.js';
+import { coverageLocal, strokeExtent } from '../src/shared/strokeModel.ts';
+import type { Stroke } from '../src/shared/strokeModel.ts';
 
 // Paint one stroke onto a float RGB canvas (values 0..255).
 // s is in its native level px; (ox, oy) maps native coords to canvas px:
 // canvasX = (s.cx - ox) * scale.
-export function paintStroke(canvas, W, H, s, ox, oy, scale) {
+export function paintStroke(canvas: Float32Array, W: number, H: number, s: Stroke, ox: number, oy: number, scale: number): void {
   const ca = Math.cos(s.angle), sa = Math.sin(s.angle);
   const cx = (s.cx - ox) * scale, cy = (s.cy - oy) * scale;
   const e = strokeExtent(s, scale);
