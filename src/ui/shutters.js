@@ -3,7 +3,7 @@
 // stroke data; the closed triptych stays on the board and can be explored like the rest.
 // A shutter's back face is a capture of its freshly painted wing, so when it opens again it
 // lands exactly on the live painting underneath.
-import { ExteriorPainter, EXT_W, EXT_H, EXT_SPLIT } from '../engine/exteriorPainter.js';
+import { ExteriorPainter, EXT_W, EXT_H, EXT_SPLIT } from '../engine/exteriorPainter.ts';
 import { WORLD_W, WORLD_H } from '../world.ts';
 
 const SWING_MS = 2600;

@@ -16,6 +16,18 @@ const BUDGET_MIN = 20_000;
 const FRAME_MS = 1000 / 60; // the frame loop's period (main.js)
 
 export class FrameBudget {
+  max: number;
+  value: number; // instances the next frame may paint
+  cap: number; // how far `value` may grow back
+  vsync: number; // the display's refresh interval, ms
+  quiet: number[];
+  spent: [number, number];
+  last: number;
+  late: boolean;
+  hold: number;
+  frames: number;
+  lateAt: number;
+
   constructor(max = BUDGET_MAX) {
     this.max = max;
     this.value = max;
@@ -31,7 +43,7 @@ export class FrameBudget {
   }
 
   // Every animation frame, before anything is drawn.
-  tick(now) {
+  tick(now: number): void {
     const dt = now - this.last;
     this.last = now;
     if (!(dt > 0) || dt > 1000 || document.hidden) return; // first frame, or back from a hidden tab
@@ -53,7 +65,7 @@ export class FrameBudget {
     this.hold = 2;
   }
 
-  learn(dt) {
+  learn(dt: number): void {
     this.quiet.push(dt);
     if (this.quiet.length > 15) this.quiet.shift();
     const s = [...this.quiet].sort((a, b) => a - b);
@@ -61,7 +73,7 @@ export class FrameBudget {
   }
 
   // After the painter's frame: what it drew, and whether the budget held work back.
-  spend(n, limited) {
+  spend(n: number, limited: boolean): void {
     this.spent[1] = this.spent[0];
     this.spent[0] = n;
     this.frames++;

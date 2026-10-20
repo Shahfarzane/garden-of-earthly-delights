@@ -1,7 +1,11 @@
 // Minimal WebGL2 helpers.
-export function createProgram(gl, vsSrc, fsSrc, name = 'program') {
-  const compile = (type, src) => {
-    const s = gl.createShader(type);
+
+// A linked program and its active uniforms by name (array uniforms without the [0]).
+export interface Program { program: WebGLProgram; u: Record<string, WebGLUniformLocation | null> }
+
+export function createProgram(gl: WebGL2RenderingContext, vsSrc: string, fsSrc: string, name = 'program'): Program {
+  const compile = (type: GLenum, src: string) => {
+    const s = gl.createShader(type)!;
     gl.shaderSource(s, src);
     gl.compileShader(s);
     if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
@@ -16,24 +20,26 @@ export function createProgram(gl, vsSrc, fsSrc, name = 'program') {
   gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSrc));
   gl.linkProgram(p);
   if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(`${name} link failed: ${gl.getProgramInfoLog(p)}`);
-  const uniforms = {};
+  const uniforms: Program['u'] = {};
   const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
   for (let i = 0; i < n; i++) {
-    const info = gl.getActiveUniform(p, i);
+    const info = gl.getActiveUniform(p, i)!;
     uniforms[info.name.replace(/\[0\]$/, '')] = gl.getUniformLocation(p, info.name);
   }
   return { program: p, u: uniforms };
 }
 
 // Unit quad (0..1) as a triangle strip, shared by every instanced draw.
-export function createQuad(gl) {
+export function createQuad(gl: WebGL2RenderingContext): WebGLBuffer {
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
   return buf;
 }
 
-export function createTexture(gl, w, h, opts = {}) {
+export interface TextureOptions { internal?: GLenum; filter?: GLenum; wrap?: GLenum }
+
+export function createTexture(gl: WebGL2RenderingContext, w: number, h: number, opts: TextureOptions = {}): WebGLTexture {
   const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
   gl.texStorage2D(gl.TEXTURE_2D, 1, opts.internal || gl.RGBA8, w, h);
@@ -44,7 +50,7 @@ export function createTexture(gl, w, h, opts = {}) {
   return t;
 }
 
-export function createFramebuffer(gl, tex) {
+export function createFramebuffer(gl: WebGL2RenderingContext, tex: WebGLTexture): WebGLFramebuffer {
   const fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);

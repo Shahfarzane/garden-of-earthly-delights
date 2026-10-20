@@ -1,7 +1,11 @@
 // Post pass: brings the painted scene to life (water, fire, foliage, sky, animated figures),
 // ages it (craquelure, varnish), and paints the frames, hinges and the dark board around it.
-import { createProgram } from './gl.js';
+import { createProgram } from './gl.ts';
 import { WORLD_W, WORLD_H } from '../world.ts';
+import type { Vec2 } from '../world.ts';
+import type { Scene } from '../scene.ts';
+import type { Program } from './gl.ts';
+import type { FrameInfo, SceneTarget } from './renderer.ts';
 
 const VS = `#version 300 es
 layout(location=0) in vec2 a_corner;
@@ -13,8 +17,8 @@ uniform sampler2D u_scene;
 uniform sampler2D u_fx;
 uniform vec2 u_view;       // physical px
 uniform vec3 u_cam;        // cx, cy (world), k = physical px per world px
-uniform vec3 u_rest;       // the same at rest: the frame and the board stay drawn here (camera.js)
-uniform vec4 u_open;       // the frame's opening, physical px, y down (camera.js)
+uniform vec3 u_rest;       // the same at rest: the frame and the board stay drawn here (camera.ts)
+uniform vec4 u_open;       // the frame's opening, physical px, y down (camera.ts)
 uniform float u_hug;       // 1: the frame is the screen's edge, round a cropped painting (upright phones)
 uniform float u_time;
 uniform float u_age;       // craquelure + varnish amount 0..1
@@ -335,8 +339,32 @@ void main() {
   o = vec4(col, 1.0);
 }`;
 
+// A displacement rig for this frame (src/living/animator.ts), world px and radians; kind is
+// 1 rotate, 2 translate, 3 scale, and a, b its amount.
+export interface ActiveRig { cx: number; cy: number; rx: number; ry: number; angle: number; feather: number; kind: number; px: number; py: number; a: number; b: number }
+
 export class Post {
-  constructor(gl, quad, scene) {
+  gl: WebGL2RenderingContext;
+  prog: Program;
+  vao: WebGLVertexArrayObject;
+  panels: Float32Array;
+  fx: WebGLTexture | null; // the effects map, once loaded
+  age: number; // craquelure and varnish, 0..1
+  life: number; // animation, 0..1
+  flash: number;
+  rake: number;
+  pointer: Vec2;
+  flashes: { t0: number; a: number }[];
+  nextFlash: number;
+  bobs: Float32Array;
+  ring: [number, number, number, number];
+  deep: Float32Array;
+  ringIn: [number, number];
+  hideWings: number;
+  rigA: Float32Array; rigB: Float32Array; rigC: Float32Array;
+  rigN: number;
+
+  constructor(gl: WebGL2RenderingContext, quad: WebGLBuffer, scene: Scene) {
     this.gl = gl;
     this.prog = createProgram(gl, VS, FS, 'post');
     this.vao = gl.createVertexArray();
@@ -363,7 +391,7 @@ export class Post {
     this.bobs = new Float32Array(32);
     bobs.forEach(([x, y, r], i) => this.bobs.set([x * W, y * H, r * W, 26], i * 4));
     this.ring = [0.505 * W, 0.445 * H, 0.135 * W, 0.115 * H];
-    // same circles as tools/prepareDeep.js (z7: every story point, radius padded by 1.15)
+    // same circles as tools/prepareDeep.ts (z7: every story point, radius padded by 1.15)
     this.deep = new Float32Array(48 * 3);
     scene.pois.filter((p) => !p.overview).slice(0, 48).forEach((p, i) => this.deep.set([p.x, p.y, p.r * 1.15], i * 3));
     this.ringIn = [0.074 * W, 0.034 * H];
@@ -373,7 +401,7 @@ export class Post {
   }
 
   // Active rigs for this frame: [{ cx, cy, rx, ry, angle, feather, kind, px, py, a, b }] in world px / radians.
-  setRigs(list) {
+  setRigs(list: ActiveRig[]): void {
     const n = Math.min(16, list.length);
     for (let i = 0; i < n; i++) {
       const r = list[i];
@@ -384,7 +412,7 @@ export class Post {
     this.rigN = n;
   }
 
-  async loadEffects(url) {
+  async loadEffects(url: string): Promise<void> {
     const gl = this.gl;
     const blob = await (await fetch(url)).blob();
     const bmp = await createImageBitmap(blob, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
@@ -402,7 +430,7 @@ export class Post {
   }
 
   // Lightning over Hell: irregular double flickers. Returns true when a strike starts.
-  tickFlash(time) {
+  tickFlash(time: number): boolean {
     let struck = false;
     if (time > this.nextFlash) {
       const n = 1 + Math.floor(Math.random() * 3);
@@ -420,7 +448,7 @@ export class Post {
     return struck;
   }
 
-  draw(gl, scene, info) {
+  draw(gl: WebGL2RenderingContext, scene: SceneTarget, info: FrameInfo): void {
     const c = info.camera;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, scene.w, scene.h);

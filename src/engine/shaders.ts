@@ -1,8 +1,8 @@
 // GLSL for the stroke painter and the compositor.
-// The stroke footprint mirrors coverageLocal() in src/shared/strokeModel.js exactly.
+// The stroke footprint mirrors coverageLocal() in src/shared/strokeModel.ts exactly.
 import { SOFT_FRAC, MIN_SOFT, BRISTLE_DEPTH, DRY_DEPTH, POS_OFFSET, POS_SCALE } from '../shared/strokeModel.ts';
 
-const f = (x) => (Number.isInteger(x) ? x.toFixed(1) : String(x));
+const f = (x: number) => (Number.isInteger(x) ? x.toFixed(1) : String(x));
 
 export const STROKE_VS = `#version 300 es
 precision highp float;
@@ -123,7 +123,7 @@ void main() {
   o = vec4(col, a);
 }`;
 
-// Ground fill for a tile slot (chalk ground; must match GROUND in tools/paintTile.js).
+// Ground fill for a tile slot (chalk ground; must match GROUND in tools/paintTile.ts).
 export const FILL_VS = `#version 300 es
 layout(location=0) in vec2 a_corner;
 void main() { gl_Position = vec4(a_corner * 2.0 - 1.0, 0.0, 1.0); }`;

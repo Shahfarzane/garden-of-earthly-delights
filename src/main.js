@@ -1,7 +1,7 @@
-import { Camera } from './engine/camera.js';
-import { attachInput } from './engine/input.js';
-import { Renderer } from './engine/renderer.js';
-import { Post } from './engine/post.js';
+import { Camera } from './engine/camera.ts';
+import { attachInput } from './engine/input.ts';
+import { Renderer } from './engine/renderer.ts';
+import { Post } from './engine/post.ts';
 import { UI } from './ui/ui.js';
 import { Shutters } from './ui/shutters.js';
 import { Soundscape } from './audio/soundscape.js';

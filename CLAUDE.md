@@ -20,7 +20,7 @@ Nothing on screen may be a decoded photograph of the painting. The scans feed on
 
 ## Invariants
 
-- `src/shared/strokeModel.ts` (CPU) and `STROKE_FS` in `src/engine/shaders.js` (GPU) must stay in lockstep; the analyzer relies on simulating exactly what the browser paints.
+- `src/shared/strokeModel.ts` (CPU) and `STROKE_FS` in `src/engine/shaders.ts` (GPU) must stay in lockstep; the analyzer relies on simulating exactly what the browser paints.
 - World units are source-scan pixels (156,547 x 89,116). Level z has scale 2^(z-9); tiles are 256 px.
 - `public/data/strokes/`, `public/data/exterior/` and `work/` are generated and gitignored.
 - The repo is public (MIT for the code). Keep personal paths, the museum texts, the fonts and the scans out of it.

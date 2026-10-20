@@ -78,7 +78,7 @@ export function renderAncestors(canvas: Float32Array, z: number, rx: number, ry:
     const { nx, ny } = levelTiles(za);
     const ax0 = rx / scale - STROKE_REACH, ay0 = ry / scale - STROKE_REACH;
     const ax1 = (rx + rw) / scale + STROKE_REACH, ay1 = (ry + rh) / scale + STROKE_REACH;
-    // level-0 strokes can reach ~85 px past their tile, so every z0 file is used (as in src/engine/tiles.js)
+    // level-0 strokes can reach ~85 px past their tile, so every z0 file is used (as in src/engine/tiles.ts)
     const fx0 = za === 0 ? 0 : Math.max(0, Math.floor(ax0 / TILE)), fx1 = za === 0 ? nx - 1 : Math.min(nx - 1, Math.floor(ax1 / TILE));
     const fy0 = za === 0 ? 0 : Math.max(0, Math.floor(ay0 / TILE)), fy1 = za === 0 ? ny - 1 : Math.min(ny - 1, Math.floor(ay1 / TILE));
     for (let fy = fy0; fy <= fy1; fy++) {

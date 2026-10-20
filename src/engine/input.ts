@@ -1,17 +1,26 @@
 // Pointer, wheel, touch and keyboard navigation for the camera.
 import { WORLD_W, WORLD_H } from '../world.ts';
+import type { Vec2 } from '../world.ts';
+import type { Camera } from './camera.ts';
 
-export function attachInput(el, camera, { onTap, onActivity, isEnabled = () => true } = {}) {
-  const pointers = new Map();
-  let samples = [];
-  let pinch = null;
-  let downAt = null;
-  const keys = new Set();
+export interface InputHooks {
+  onTap?: (sx: number, sy: number) => void; // a press that did not move, in element px
+  onActivity?: () => void;
+  isEnabled?: () => boolean;
+}
+
+// Returns the per-frame keyboard tick.
+export function attachInput(el: HTMLElement, camera: Camera, { onTap, onActivity, isEnabled = () => true }: InputHooks = {}): (dt: number) => void {
+  const pointers = new Map<number, Vec2>();
+  let samples: { t: number; dx: number; dy: number }[] = [];
+  let pinch: { d: number; m: Vec2 } | null = null;
+  let downAt: { p: Vec2; t: number; moved: boolean } | null = null;
+  const keys = new Set<string>();
   let gesturing = false;
 
-  const pos = (e) => { const r = el.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  const pos = (e: MouseEvent | GestureEvent): Vec2 => { const r = el.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
 
-  const down = (e) => {
+  const down = (e: PointerEvent) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     try { el.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
     pointers.set(e.pointerId, pos(e));
@@ -40,7 +49,7 @@ export function attachInput(el, camera, { onTap, onActivity, isEnabled = () => t
   el.addEventListener('pointermove', (e) => {
     if (!pointers.has(e.pointerId)) return;
     const p = pos(e);
-    const prev = pointers.get(e.pointerId);
+    const prev = pointers.get(e.pointerId)!;
     pointers.set(e.pointerId, p);
     if (downAt && Math.hypot(p[0] - downAt.p[0], p[1] - downAt.p[1]) > 5) downAt.moved = true;
     if (pointers.size === 1) {
@@ -51,7 +60,7 @@ export function attachInput(el, camera, { onTap, onActivity, isEnabled = () => t
     } else if (pointers.size === 2 && pinch) {
       const [a, b] = [...pointers.values()];
       const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
-      const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const m: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
       camera.panBy(m[0] - pinch.m[0], m[1] - pinch.m[1]);
       camera.zoomAt(d / pinch.d, m[0], m[1], false);
       pinch = { d, m };
@@ -59,7 +68,7 @@ export function attachInput(el, camera, { onTap, onActivity, isEnabled = () => t
     onActivity?.();
   });
 
-  const end = (e) => {
+  const end = (e: PointerEvent) => {
     if (!pointers.has(e.pointerId)) return;
     pointers.delete(e.pointerId);
     if (pointers.size === 1) { pinch = null; samples = []; if (downAt) downAt.moved = true; return; }
@@ -84,7 +93,7 @@ export function attachInput(el, camera, { onTap, onActivity, isEnabled = () => t
   // Wheel and trackpad gestures are handled on the window, whatever is under the pointer:
   // a pinch must never fall through to the browser's own page zoom. Scrollable panels
   // (the story text, popovers) keep plain scrolling.
-  const scrollsItself = (t) => t instanceof Element && t.closest('.story, .panel, .minimap');
+  const scrollsItself = (t: EventTarget | null) => t instanceof Element && t.closest('.story, .panel, .minimap');
   window.addEventListener('wheel', (e) => {
     const pinch = e.ctrlKey || e.metaKey;
     if (!pinch && scrollsItself(e.target)) return;
@@ -141,7 +150,7 @@ export function attachInput(el, camera, { onTap, onActivity, isEnabled = () => t
   window.addEventListener('blur', () => keys.clear());
 
   // continuous keyboard panning, called every frame
-  return function tick(dt) {
+  return function tick(dt: number) {
     if (!isEnabled()) return;
     let dx = 0, dy = 0;
     if (keys.has('arrowleft') || keys.has('a')) dx += 1;

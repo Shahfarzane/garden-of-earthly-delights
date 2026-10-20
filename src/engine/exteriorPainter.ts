@@ -1,18 +1,32 @@
 // Paints the closed exterior ("Creation of the World") from its stroke files into an
 // offscreen WebGL2 canvas, progressively, coarse level first. The stroke data comes from
-// the same analyzer as the interior (WORLD=exterior, see tools/prepareExterior.js).
-import { createProgram, createQuad } from './gl.js';
-import { STROKE_VS, STROKE_FS } from './shaders.js';
+// the same analyzer as the interior (WORLD=exterior, see tools/prepareExterior.ts).
+import { createProgram, createQuad } from './gl.ts';
+import { STROKE_VS, STROKE_FS } from './shaders.ts';
 import { RECORD_BYTES } from '../shared/strokeModel.ts';
 import { GROUND, TILE } from '../world.ts';
+import type { Program } from './gl.ts';
 
 export const EXT_W = 1402; // two painted areas side by side, source px
 export const EXT_H = 1700;
 export const EXT_SPLIT = 700; // the left shutter's painted width
 const EXT_MAX_Z = 3;
 
+// A stroke file of the exterior pyramid, with its strokes on the GPU once loaded.
+interface ExtFile { z: number; x: number; y: number; scale: number; count: number; vbo: WebGLBuffer; vao: WebGLVertexArrayObject }
+
 export class ExteriorPainter {
-  constructor(width) {
+  k: number;
+  canvas: HTMLCanvasElement;
+  gl: WebGL2RenderingContext;
+  prog: Program;
+  quad: WebGLBuffer;
+  files: ExtFile[];
+  total: number;
+  drawn: number;
+  strokeView: boolean;
+
+  constructor(width: number) {
     this.k = width / EXT_W; // canvas px per source px
     this.canvas = document.createElement('canvas');
     this.canvas.width = Math.round(EXT_W * this.k);
@@ -29,7 +43,7 @@ export class ExteriorPainter {
   }
 
   // Start over on a fresh ground (e.g. to repaint in the stroke view).
-  reset() {
+  reset(): void {
     const gl = this.gl;
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(GROUND[0] / 255, GROUND[1] / 255, GROUND[2] / 255, 1);
@@ -37,9 +51,9 @@ export class ExteriorPainter {
     this.drawn = 0;
   }
 
-  async load(base = `${import.meta.env.BASE_URL}data/exterior/strokes`) {
+  async load(base = `${import.meta.env.BASE_URL}data/exterior/strokes`): Promise<void> {
     const gl = this.gl;
-    const jobs = [];
+    const jobs: Partial<ExtFile>[] = [];
     for (let z = 0; z <= EXT_MAX_Z; z++) {
       const s = Math.pow(2, z - EXT_MAX_Z);
       const nx = Math.ceil(Math.ceil(EXT_W * s) / TILE), ny = Math.ceil(Math.ceil(EXT_H * s) / TILE);
@@ -62,7 +76,7 @@ export class ExteriorPainter {
       gl.bindVertexArray(null);
     }));
     // paint order: level by level, files row-major, strokes in stored order
-    this.files = jobs.sort((a, b) => a.z - b.z || a.y - b.y || a.x - b.x);
+    this.files = (jobs as ExtFile[]).sort((a, b) => a.z - b.z || a.y - b.y || a.x - b.x); // every job is loaded now
     this.total = this.files.reduce((s, f) => s + f.count, 0);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(GROUND[0] / 255, GROUND[1] / 255, GROUND[2] / 255, 1);
@@ -70,7 +84,7 @@ export class ExteriorPainter {
   }
 
   // Paint strokes up to fraction p (0..1) of the total. Returns true when finished.
-  paintTo(p) {
+  paintTo(p: number): boolean {
     const gl = this.gl;
     const target = Math.min(this.total, Math.ceil(this.total * p));
     if (target <= this.drawn) return this.drawn >= this.total;
@@ -106,7 +120,7 @@ export class ExteriorPainter {
 
   // Copy one shutter's painted area (source px rect sx..sx+sw) into a 2D context rect.
   // The GL canvas has its first row at the bottom, so it is drawn flipped.
-  blit(ctx, sx, sw, dx, dy, dw, dh) {
+  blit(ctx: CanvasRenderingContext2D, sx: number, sw: number, dx: number, dy: number, dw: number, dh: number): void {
     const k = this.k;
     ctx.save();
     ctx.translate(dx, dy + dh);
@@ -115,7 +129,7 @@ export class ExteriorPainter {
     ctx.restore();
   }
 
-  dispose() {
+  dispose(): void {
     const gl = this.gl;
     for (const f of this.files) { gl.deleteBuffer(f.vbo); gl.deleteVertexArray(f.vao); }
     gl.getExtension('WEBGL_lose_context')?.loseContext();

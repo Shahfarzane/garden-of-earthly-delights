@@ -5,8 +5,36 @@ import { FULL_Z, levelTiles } from '../world.ts';
 const MAX_INFLIGHT = 10;
 const GPU_BUDGET = (window.matchMedia('(pointer: coarse)').matches ? 160 : 512) * 1024 * 1024;
 
+export type FileState = 'idle' | 'queued' | 'loading' | 'ready' | 'missing';
+
+// One stroke file of the pyramid. An evicted file goes back to 'idle' and keeps its identity.
+export interface StrokeFile {
+  key: string; z: number; x: number; y: number;
+  state: FileState;
+  vao: WebGLVertexArrayObject | null; vbo: WebGLBuffer | null;
+  count: number; // stroke records
+  bytes: number;
+  lastUsed: number; // the store frame it was last asked for
+  priority: number; // lower loads sooner
+}
+
+// manifest.json: which tiles of the levels past FULL_Z hold strokes, as "x_y" per level
+interface Manifest { deep?: Record<string, string[]> }
+
 export class StrokeStore {
-  constructor(gl, quadBuf, base = `${import.meta.env.BASE_URL}data/strokes`) {
+  gl: WebGL2RenderingContext;
+  quad: WebGLBuffer;
+  base: string;
+  files: Map<string, StrokeFile>;
+  queue: StrokeFile[];
+  inflight: number;
+  bytes: number;
+  deep: Map<number, Set<string>>;
+  maxZ: number;
+  frame: number;
+  onReady: ((e: StrokeFile) => void) | null;
+
+  constructor(gl: WebGL2RenderingContext, quadBuf: WebGLBuffer, base = `${import.meta.env.BASE_URL}data/strokes`) {
     this.gl = gl;
     this.quad = quadBuf;
     this.base = base;
@@ -20,11 +48,11 @@ export class StrokeStore {
     this.onReady = null;
   }
 
-  async init() {
+  async init(): Promise<void> {
     try {
       const r = await fetch(`${this.base}/manifest.json`);
       if (r.ok) {
-        const m = await r.json();
+        const m: Manifest = await r.json();
         for (const [z, list] of Object.entries(m.deep || {})) {
           this.deep.set(Number(z), new Set(list));
           this.maxZ = Math.max(this.maxZ, Number(z));
@@ -33,7 +61,7 @@ export class StrokeStore {
     } catch { /* no deep levels */ }
   }
 
-  exists(z, x, y) {
+  exists(z: number, x: number, y: number): boolean {
     if (z <= FULL_Z) {
       const { nx, ny } = levelTiles(z);
       return x >= 0 && y >= 0 && x < nx && y < ny;
@@ -42,7 +70,7 @@ export class StrokeStore {
   }
 
   // Returns the entry, scheduling a fetch if needed. priority: lower = sooner.
-  get(z, x, y, priority = 0) {
+  get(z: number, x: number, y: number, priority = 0): StrokeFile {
     const key = `${z}/${x}_${y}`;
     let e = this.files.get(key);
     if (!e) {
@@ -58,24 +86,24 @@ export class StrokeStore {
     return e;
   }
 
-  pump() {
+  pump(): void {
     this.frame++;
     if (this.queue.length && this.inflight < MAX_INFLIGHT) {
       this.queue.sort((a, b) => a.priority - b.priority);
-      while (this.queue.length && this.inflight < MAX_INFLIGHT) this.load(this.queue.shift());
+      while (this.queue.length && this.inflight < MAX_INFLIGHT) this.load(this.queue.shift()!);
     }
     // reset priorities so stale requests don't keep their urgency
     for (const e of this.queue) e.priority += 1;
     if (this.bytes > GPU_BUDGET) this.evict();
   }
 
-  async load(e) {
+  async load(e: StrokeFile): Promise<void> {
     e.state = 'loading';
     this.inflight++;
     try {
       const r = await fetch(`${this.base}/${e.z}/${e.x}_${e.y}.bin`);
       // dev servers answer missing files with index.html; only accept real stroke records
-      if (!r.ok || (r.headers.get('content-type') || '').includes('text/html')) throw new Error(r.status);
+      if (!r.ok || (r.headers.get('content-type') || '').includes('text/html')) throw new Error(String(r.status));
       const buf = await r.arrayBuffer();
       if (buf.byteLength % RECORD_BYTES !== 0) throw new Error('bad stroke file');
       this.upload(e, buf);
@@ -87,7 +115,7 @@ export class StrokeStore {
     this.onReady?.(e);
   }
 
-  upload(e, buf) {
+  upload(e: StrokeFile, buf: ArrayBuffer): void {
     const gl = this.gl;
     e.count = buf.byteLength / RECORD_BYTES;
     e.bytes = buf.byteLength;
@@ -114,7 +142,7 @@ export class StrokeStore {
     this.bytes += e.bytes;
   }
 
-  evict() {
+  evict(): void {
     const gl = this.gl;
     const ready = [...this.files.values()].filter((e) => e.state === 'ready' && e.z > 2 && this.frame - e.lastUsed > 120);
     ready.sort((a, b) => a.lastUsed - b.lastUsed);

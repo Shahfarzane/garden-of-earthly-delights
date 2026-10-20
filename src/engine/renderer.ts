@@ -1,14 +1,40 @@
 // Frame loop glue: picks the level, requests tiles, paints, composites, post-processes.
-import { createProgram, createQuad, createTexture, createFramebuffer } from './gl.js';
-import { TILE_VS, TILE_FS } from './shaders.js';
-import { StrokeStore } from './strokeStore.js';
-import { TileCache, tileWorldRect } from './tiles.js';
+import { createProgram, createQuad, createTexture, createFramebuffer } from './gl.ts';
+import { TILE_VS, TILE_FS } from './shaders.ts';
+import { StrokeStore } from './strokeStore.ts';
+import { TileCache, tileWorldRect } from './tiles.ts';
 import { levelTiles, MAX_Z, TILE } from '../world.ts';
+import type { Camera } from './camera.ts';
+import type { Program } from './gl.ts';
+import type { Post } from './post.ts';
 
 const Z_RENDER_MAX = 11;
 
+// The offscreen buffer tiles are composited into, before the post pass. Physical px.
+export interface SceneTarget { tex: WebGLTexture; fbo: WebGLFramebuffer; w: number; h: number }
+// What the post pass draws a frame with.
+export interface FrameInfo { camera: Camera; dpr: number; time: number; zr: number }
+
 export class Renderer {
-  constructor(canvas, camera) {
+  canvas: HTMLCanvasElement;
+  camera: Camera;
+  gl: WebGL2RenderingContext;
+  quad: WebGLBuffer;
+  store: StrokeStore;
+  tiles: TileCache;
+  tileProg: Program;
+  instBuf: WebGLBuffer;
+  tileVao: WebGLVertexArrayObject;
+  inst: Float32Array;
+  dpr: number;
+  quality: number;
+  scene: SceneTarget | null;
+  post: Post | null;
+  zr: number;
+  time: number;
+  lastPost?: FrameInfo;
+
+  constructor(canvas: HTMLCanvasElement, camera: Camera) {
     this.canvas = canvas;
     this.camera = camera;
     const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: 'high-performance' });
@@ -36,14 +62,14 @@ export class Renderer {
     this.dpr = 1;
     this.quality = 0; // level bias: +1 sharper, -1 faster
     this.scene = null;
-    this.post = null; // set by effects module: { draw(gl, sceneTex, frameInfo) }
+    this.post = null; // set by main.ts
     this.zr = 0;
     this.time = 0;
   }
 
-  async init() { await this.store.init(); }
+  async init(): Promise<void> { await this.store.init(); }
 
-  resize() {
+  resize(): void {
     const gl = this.gl;
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = Math.max(1, Math.round(this.canvas.clientWidth * this.dpr));
@@ -56,13 +82,13 @@ export class Renderer {
   }
 
   // Run the post pass again on the current scene (same frame, nothing re-composited).
-  redrawPost() {
-    if (this.post && this.lastPost) this.post.draw(this.gl, this.scene, this.lastPost);
+  redrawPost(): void {
+    if (this.post && this.lastPost) this.post.draw(this.gl, this.scene!, this.lastPost);
   }
 
   // How many strokes stand behind the current view: every loaded stroke file of the
   // levels being painted that touches the visible rect.
-  strokesInView() {
+  strokesInView(): number {
     const v = this.camera.view();
     let n = 0;
     for (let z = 0; z <= Math.min(this.zr, this.store.maxZ); z++) {
@@ -78,7 +104,7 @@ export class Renderer {
     return n;
   }
 
-  renderLevel() {
+  renderLevel(): number {
     const c = this.camera;
     // bias toward the finer level: each level is a painterly approximation, so showing it
     // slightly minified looks much crisper than showing the coarser one magnified
@@ -87,7 +113,7 @@ export class Renderer {
   }
 
   // Visible tile range at level z for the current view, padded by `pad` tiles.
-  visibleRange(z, pad = 0) {
+  visibleRange(z: number, pad = 0): { x0: number; x1: number; y0: number; y1: number; s: number } {
     const v = this.camera.view();
     const s = Math.pow(2, MAX_Z - z) * TILE;
     const { nx, ny } = levelTiles(z);
@@ -98,10 +124,11 @@ export class Renderer {
     };
   }
 
-  frame(now, dt) {
+  frame(now: number, dt: number): { zr: number; tiles: number } {
     const gl = this.gl;
     this.time += dt;
     this.resize();
+    const scene = this.scene!; // resize() made it
     const c = this.camera;
     const zr = this.renderLevel();
     this.zr = zr;
@@ -125,8 +152,8 @@ export class Renderer {
     this.tiles.paint(now);
 
     // composite visible tiles into the scene buffer
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.scene.fbo);
-    gl.viewport(0, 0, this.scene.w, this.scene.h);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, scene.fbo);
+    gl.viewport(0, 0, scene.w, scene.h);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     const r = this.visibleRange(zr);
@@ -145,7 +172,7 @@ export class Renderer {
       n++;
     }
     gl.useProgram(this.tileProg.program);
-    gl.uniform2f(this.tileProg.u.u_view, this.scene.w, this.scene.h);
+    gl.uniform2f(this.tileProg.u.u_view, scene.w, scene.h);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.tiles.atlas);
     gl.uniform1i(this.tileProg.u.u_atlas, 0);
@@ -157,12 +184,12 @@ export class Renderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     // post: effects, varnish, frame; falls back to a straight blit
-    gl.viewport(0, 0, this.scene.w, this.scene.h);
+    gl.viewport(0, 0, scene.w, scene.h);
     this.lastPost = { camera: c, dpr: this.dpr, time: this.time, zr };
-    if (this.post) this.post.draw(gl, this.scene, this.lastPost);
+    if (this.post) this.post.draw(gl, scene, this.lastPost);
     else {
-      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.scene.fbo);
-      gl.blitFramebuffer(0, 0, this.scene.w, this.scene.h, 0, 0, this.scene.w, this.scene.h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, scene.fbo);
+      gl.blitFramebuffer(0, 0, scene.w, scene.h, 0, 0, scene.w, scene.h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
     }
     return { zr, tiles: n };
