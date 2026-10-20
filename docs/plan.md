@@ -291,3 +291,38 @@ Shahin: "the frame should stay fixed where it is and we can only zoom", meaning 
 - Checked with CDP input at 1728x990: 30 of 30 checks. Trackpad pinch held the point under the fingers to 0.00 px. Screenshots of four strips of the frame stayed byte-identical through pinching, pinching out past rest, Safari gestures (dispatched from script, since Chrome cannot synthesize them, and every one prevented), drags and scrolls to all four edges, keys, double-click, the zoom-out lozenge, a story flight (the opening stayed on painting every frame) and the closed exterior. At 390x844 with touch, 8 of 8, the page never scaled. The interaction checks of Round 7 pass again: 43, 43 and 42.
 
 On a phone held upright, the framed triptych is short, about 205 px of an 844 px screen, so the zoomed painting is seen through that strip. Turning the phone fills it. Should the frame hug the screen instead, cropping the triptych at rest, that is Shahin's call.
+
+## Round 9 (2026-10-20): phones held upright, and the first view
+
+### The frame hugs an upright phone
+
+Shahin chose the hugging frame for upright phones. On portrait screens up to 768 px wide, the frame runs round the box under the navbar and the painting covers its opening. At 390x844 that is a 347x659 px opening where Round 8 left a 205 px strip. At rest the crop is the centre panel's middle: about 45,700 of the triptych's 154,280 world px in width, so the cavalcade round the Pool of Youth (42,300 across) just fits. That is the painting's namesake and its visual centre. A sideways pan at rest reaches the wings, and pinch and pan work as on desktop, inside the same clamp. The frame is drawn round the opening in screen space, the shutters swing behind it, and the whole-painting lozenge reads "Centre" there. Desktop and landscape screens keep the framed whole triptych.
+
+Testing on the phone sizes turned up two touch bugs, both fixed:
+
+- A finger that landed on a story marker or a lozenge gave the pinch to the browser, which scaled the page (`visualViewport.scale` 1.6). The interface layer now has `touch-action: none`, while the story text and the panels still scroll. A touch that starts on a marker is captured by the board, so it pans and pinches the painting, and a plain tap opens the story as anywhere else.
+- At rest on a phone, the central story circles are big enough to tap, so the tap that closed a panel also opened the Pool of Youth. A tap that closes a panel now only closes it.
+
+Checked with real input: the interaction suite passes at 390x844 (43), 768x1024 (43), 844x390 (44), 1440x900 (44) and 1728x990 (44). The fixed-frame checks pass at 390x844 and 768x1024 (15 each, with the sideways pan at rest, touch pinch, touch pan, pinching back to rest and the wings shut) and at 1728x990 (30).
+
+### Coarse first, then sharp: measured, and already the case
+
+Shahin approved Round 7's first proposal: request the first whole-triptych view one level coarser on dense screens, and sharpen in place once it is complete. Before building it, the first visit was measured again on a local production build (`vite preview`, the real stroke files), with the network held at 50 Mbps and 20 ms latency, cache off, at 1728x990:
+
+| | requests | MB | first paint | z3 view complete | z4 view complete |
+| --- | --- | --- | --- | --- | --- |
+| dpr 1 | 95 | 8.28 | 176 to 180 ms | 2.03 s | |
+| dpr 2, as shipped | 315 | 23.66 | 184 ms | 2.05 to 2.07 s | 4.57 s |
+| dpr 2, z4 held back until z3 is complete | 315 | 23.66 | 180 ms | 2.03 to 2.04 s | 5.15 to 5.19 s |
+
+The code already loads the coarse level first: the store fetches coarser files first, and a z4 tile not yet painted shows its z3 parent. So the complete z3 view arrives at dpr 2 only 20 to 30 ms after dpr 1. Round 7's "24 MB before the first full view" counted the moment the sharper level was complete; the complete coarse view was already there at 8 to 11.5 MB. Holding z4 back until z3 is done gains about 25 ms on the coarse view and costs 0.6 s on the sharp one, so it is not shipped. The approved behaviour, coarse first and then sharp in place, is the one the code has.
+
+With everything in this round, same conditions:
+
+| | requests | MB | first paint | complete view | sharp view |
+| --- | --- | --- | --- | --- | --- |
+| 1728x990, dpr 1 | 95 | 8.29 | 184 to 196 ms | 2.04 to 2.05 s (z3) | |
+| 1728x990, dpr 2 | 315 | 23.66 | 176 ms | 2.05 s (z3) | 4.56 to 4.59 s (z4, 220 files, 15.4 MB) |
+| 390x844 upright | 71 | 6.65 | 176 to 180 ms | 1.75 s (z3) | |
+
+The live site measured 1.18 to 1.21 s and 2.14 to 2.51 s in Round 7 over a faster real connection, so compare these rows with each other, not with those. The cuts still worth making are Round 7's second to fourth proposals: packed files per level, effects after the first view, and immutable versioned data.
