@@ -16,8 +16,11 @@ const STAVES = [
   [57, 57, 60, 59, 57, 57, 57, 57],
 ];
 
-function staffNotes(staff) {
-  const out = staff.map((midi, i) => ({ midi, beats: i === staff.length - 1 ? 2 : 1 }));
+// One note; midi null is a rest.
+export interface SongNote { midi: number | null; beats: number }
+
+function staffNotes(staff: number[]): SongNote[] {
+  const out: SongNote[] = staff.map((midi, i) => ({ midi, beats: i === staff.length - 1 ? 2 : 1 }));
   out.push({ midi: null, beats: 1 }); // rest between staves
   return out;
 }

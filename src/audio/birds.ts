@@ -2,9 +2,14 @@
 // schedules one phrase starting at t0 and returns its duration. Phrases are
 // randomized within species-like constraints so nothing loops audibly.
 
-import { tone, burst } from './dsp.js';
+import { tone, burst } from './dsp.ts';
+import type { Rng, ToneOptions, Voice } from './dsp.ts';
 
-const chirp = (ctx, dest, o) => tone(ctx, dest, { type: 'sine', a: 0.004, ...o });
+// Schedules one phrase at t0 into dest; returns its duration.
+export type Species = (ctx: BaseAudioContext, dest: AudioNode, rng: Rng, t0: number, gain: number) => number;
+export type SpeciesName = keyof typeof SPECIES;
+
+const chirp = (ctx: BaseAudioContext, dest: AudioNode, o: ToneOptions) => tone(ctx, dest, { type: 'sine', a: 0.004, ...o });
 
 export const SPECIES = {
   // fast descending trill
@@ -133,15 +138,15 @@ export const SPECIES = {
     }
     return n * step;
   },
-};
+} satisfies Record<string, Species>;
 
-export const SONGBIRDS = ['warbler', 'thrush', 'blackbird', 'finch', 'robin'];
+export const SONGBIRDS: SpeciesName[] = ['warbler', 'thrush', 'blackbird', 'finch', 'robin'];
 
 /**
  * Register a bird-chorus pattern on a Voice: random species from `pool`
  * every `gapMin..gapMax` seconds, lowpassed for distance.
  */
-export function addBirdChorus(voice, dest, pool, { gain = 0.05, gapMin = 1, gapMax = 4, delay = 0 } = {}) {
+export function addBirdChorus(voice: Voice, dest: AudioNode, pool: readonly SpeciesName[], { gain = 0.05, gapMin = 1, gapMax = 4, delay = 0 } = {}): void {
   const rng = voice.rng;
   voice.pattern(delay + rng.range(0, gapMax * 0.5), (t) => {
     const sp = SPECIES[rng.pick(pool)];

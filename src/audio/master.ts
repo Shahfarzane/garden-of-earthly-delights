@@ -3,16 +3,22 @@
 // and dark). Each section bus has its own dry level and send pair, which is
 // how Eden sounds airy, the Garden open and Hell cavernous.
 
-import { gainNode, makeImpulse } from './dsp.js';
+import { gainNode, makeImpulse } from './dsp.ts';
+import type { PanelId } from '../scene.ts';
 
-const SECTION_SENDS = {
+// A section of the mix: each panel, and the UI cues.
+export type Section = PanelId | 'cue';
+export interface SectionBus { bus: GainNode; level: GainNode; sendAir: GainNode; sendCavern: GainNode }
+export type Master = ReturnType<typeof createMaster>;
+
+const SECTION_SENDS: Record<Section, { air: number; cavern: number }> = {
   eden: { air: 0.32, cavern: 0.0 },
   garden: { air: 0.22, cavern: 0.07 },
   hell: { air: 0.04, cavern: 0.42 },
   cue: { air: 0.18, cavern: 0.1 },
 };
 
-export function createMaster(ctx, destination = ctx.destination) {
+export function createMaster(ctx: BaseAudioContext, destination: AudioNode = ctx.destination) {
   const input = gainNode(ctx, 0.8);
 
   const comp = ctx.createDynamicsCompressor();
@@ -57,8 +63,8 @@ export function createMaster(ctx, destination = ctx.destination) {
   air.connect(airReturn).connect(input);
   cavern.connect(cavernReturn).connect(input);
 
-  const sections = {};
-  for (const [name, send] of Object.entries(SECTION_SENDS)) {
+  const sections = {} as Record<Section, SectionBus>; // every section, filled below
+  for (const [name, send] of Object.entries(SECTION_SENDS) as [Section, { air: number; cavern: number }][]) {
     const bus = gainNode(ctx, 1);     // voices/beds connect here
     const level = gainNode(ctx, 1);   // crossfade weight for the section
     const sendAir = gainNode(ctx, send.air);
@@ -72,8 +78,8 @@ export function createMaster(ctx, destination = ctx.destination) {
 
   return {
     input, comp, limiter, clipper, volume, mute, sections, air, cavern,
-    setVolume(v) { volume.gain.setTargetAtTime(Math.max(0, Math.min(1, v)), ctx.currentTime, 0.03); },
-    setMuted(m) { mute.gain.setTargetAtTime(m ? 0 : 1, ctx.currentTime, 0.03); },
+    setVolume(v: number) { volume.gain.setTargetAtTime(Math.max(0, Math.min(1, v)), ctx.currentTime, 0.03); },
+    setMuted(m: boolean) { mute.gain.setTargetAtTime(m ? 0 : 1, ctx.currentTime, 0.03); },
     dispose() { try { mute.disconnect(); } catch { /* detached */ } },
   };
 }

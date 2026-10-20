@@ -1,26 +1,37 @@
 // Offline render test: every voice type and bed in both modes, plus every cue,
 // rendered through the real master chain in an OfflineAudioContext and
 // measured for peak and RMS. 'nature' renders also assert that no music
-// generator was instantiated (music.js counts them). Used by dev/audio.html.
+// generator was instantiated (music.ts counts them). Used by dev/audio.html.
 
-import { createMaster } from './master.js';
-import { BEDS } from './beds.js';
-import { MUSIC_BEDS, musicStats } from './music.js';
-import { createVoice, VOICE_NAMES, VOICE_PANEL } from './voices.js';
-import { CUES, playCue } from './cues.js';
-import { dB } from './dsp.js';
+import { createMaster } from './master.ts';
+import { BEDS } from './beds.ts';
+import { MUSIC_BEDS, musicStats } from './music.ts';
+import { createVoice, VOICE_NAMES, VOICE_PANEL } from './voices.ts';
+import { CUES, playCue } from './cues.ts';
+import { dB } from './dsp.ts';
+import type { Voice } from './dsp.ts';
+import type { CueName } from './cues.ts';
+import type { Section } from './master.ts';
+import type { VoiceType } from './voices.ts';
+import type { PanelId } from '../scene.ts';
 
-export function testItems() {
-  const items = [];
+// One render: a voice or a bed in a mode, or a cue ('-').
+export type TestItem = { mode: string; seconds: number } & (
+  { kind: 'voice'; name: VoiceType } | { kind: 'bed'; name: PanelId } | { kind: 'cue'; name: CueName }
+);
+export type TestRow = Awaited<ReturnType<typeof renderItem>>;
+
+export function testItems(): TestItem[] {
+  const items: TestItem[] = [];
   for (const mode of ['nature', 'period']) {
     for (const name of VOICE_NAMES) items.push({ kind: 'voice', name, mode, seconds: 4 });
-    for (const name of Object.keys(BEDS)) items.push({ kind: 'bed', name, mode, seconds: mode === 'period' ? 8 : 4 });
+    for (const name of Object.keys(BEDS) as PanelId[]) items.push({ kind: 'bed', name, mode, seconds: mode === 'period' ? 8 : 4 });
   }
-  for (const name of Object.keys(CUES)) items.push({ kind: 'cue', name, mode: '-', seconds: 4 });
+  for (const name of Object.keys(CUES) as CueName[]) items.push({ kind: 'cue', name, mode: '-', seconds: 4 });
   return items;
 }
 
-function measure(buffer) {
+function measure(buffer: AudioBuffer): { peak: number; rms: number; nan: boolean } {
   let peak = 0, sum = 0, nan = false, n = 0;
   for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
     const d = buffer.getChannelData(ch);
@@ -37,14 +48,14 @@ function measure(buffer) {
 }
 
 // raw=true bypasses the master chain so the source level itself can be read.
-async function renderOnce(item, sampleRate, raw) {
+async function renderOnce(item: TestItem, sampleRate: number, raw: boolean) {
   const seconds = item.seconds;
   const ctx = new OfflineAudioContext(2, Math.floor(seconds * sampleRate), sampleRate);
   const master = raw ? null : createMaster(ctx);
-  const dest = (section) => (raw ? ctx.destination : master.sections[section].bus);
+  const dest = (section: Section) => (raw ? ctx.destination : master!.sections[section].bus);
   const music = item.mode === 'period';
   const before = musicStats.instantiated;
-  const voices = [];
+  const voices: Voice[] = [];
   if (item.kind === 'voice') {
     const v = createVoice(item.name, ctx, 1, { music });
     v.out.connect(dest(VOICE_PANEL[item.name]));
@@ -72,7 +83,7 @@ async function renderOnce(item, sampleRate, raw) {
   return { ...measure(buffer), musicBuilt };
 }
 
-export async function renderItem(item, { sampleRate = 44100 } = {}) {
+export async function renderItem(item: TestItem, { sampleRate = 44100 } = {}) {
   const m = await renderOnce(item, sampleRate, false);
   const r = await renderOnce(item, sampleRate, true);
   const peakDb = dB(m.peak), rmsDb = dB(m.rms);
@@ -86,8 +97,8 @@ export async function renderItem(item, { sampleRate = 44100 } = {}) {
   };
 }
 
-export async function runOfflineTest(opts = {}) {
-  const rows = [];
+export async function runOfflineTest(opts: { sampleRate?: number; onRow?: (row: TestRow, n: number, total: number) => void } = {}): Promise<TestRow[]> {
+  const rows: TestRow[] = [];
   const items = testItems();
   for (const item of items) {
     const row = await renderItem(item, opts);

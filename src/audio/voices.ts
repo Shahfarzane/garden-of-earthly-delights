@@ -7,23 +7,30 @@
 import {
   Voice, tone, burst, pluck, clang, drum, vowelNote, formantBank, filter, gainNode,
   mtof, METAL_RATIOS, BELL_RATIOS,
-} from './dsp.js';
-import { SPECIES, SONGBIRDS, addBirdChorus } from './birds.js';
-import { BUTTOCK_SONG } from './buttockSong.js';
-import { markMusic } from './music.js';
+} from './dsp.ts';
+import { SPECIES, SONGBIRDS, addBirdChorus } from './birds.ts';
+import { BUTTOCK_SONG } from './buttockSong.ts';
+import { markMusic } from './music.ts';
+import type { Vowel } from './dsp.ts';
+import type { SpeciesName } from './birds.ts';
+import type { PanelId } from '../scene.ts';
+
+// Builds a positional voice; o.music adds the parts played in 'period' mode.
+export type VoiceFactory = (ctx: BaseAudioContext, seed: number, o?: { music?: boolean }) => Voice;
+export type VoiceType = keyof typeof VOICES;
 
 const DORIAN_D = [62, 64, 65, 67, 69, 71, 72, 74, 76, 77];
 
 // --- shared building blocks ------------------------------------------------
 
-function waterFlow(v, gain = 0.03, f = 2600, Q = 1.4) {
+function waterFlow(v: Voice, gain = 0.03, f = 2600, Q = 1.4) {
   const flow = v.noise('white', { type: 'bandpass', f, Q }, gain);
   v.lfo(flow.gain, 4.7, gain * 0.35);
   v.lfo(flow.gain, 7.9, gain * 0.25);
   return flow;
 }
 
-function bloops(v, gain = 0.02, gapMin = 0.2, gapMax = 0.9) {
+function bloops(v: Voice, gain = 0.02, gapMin = 0.2, gapMax = 0.9) {
   v.pattern(0.2, (t) => {
     const f = v.rng.range(700, 1600);
     tone(v.ctx, v.out, { t0: t, dur: v.rng.range(0.05, 0.1), f, f1: f * v.rng.range(1.6, 2.4), gain: gain * v.rng.range(0.5, 1) });
@@ -31,7 +38,7 @@ function bloops(v, gain = 0.02, gapMin = 0.2, gapMax = 0.9) {
   });
 }
 
-function splashes(v, gain = 0.05, gapMin = 0.3, gapMax = 1.4) {
+function splashes(v: Voice, gain = 0.05, gapMin = 0.3, gapMax = 1.4) {
   v.pattern(0.1, (t) => {
     const dur = v.rng.range(0.12, 0.45);
     burst(v.ctx, v.out, v.rng, { t0: t, dur, kind: 'white', a: 0.015, r: dur * 0.6, gain: gain * v.rng.range(0.5, 1), filter: { type: 'bandpass', f: v.rng.range(1000, 3000), Q: 0.8, f1: v.rng.range(600, 1500) } });
@@ -40,7 +47,7 @@ function splashes(v, gain = 0.05, gapMin = 0.3, gapMax = 1.4) {
 }
 
 // "ha-ha-ha": a short descending staircase of open vowels
-function laugh(v, dest, t0, gain) {
+function laugh(v: Voice, dest: AudioNode, t0: number, gain: number): number {
   const n = v.rng.int(3, 6);
   const f0 = v.rng.range(260, 520);
   for (let i = 0; i < n; i++) {
@@ -49,14 +56,14 @@ function laugh(v, dest, t0, gain) {
   return n * 0.16;
 }
 
-function groan(v, dest, t0, gain) {
+function groan(v: Voice, dest: AudioNode, t0: number, gain: number): number {
   const f = v.rng.range(95, 190);
   const dur = v.rng.range(0.9, 2.2);
   vowelNote(v.ctx, dest, { t0, dur, f, f1: f * v.rng.range(0.7, 0.9), vowels: [['o', 0], ['u', 0.6]], gain, a: 0.25, r: 0.5, vib: { rate: 5, depth: 20 } });
   return dur;
 }
 
-function chainRattle(v, dest, t0, gain) {
+function chainRattle(v: Voice, dest: AudioNode, t0: number, gain: number): number {
   const n = v.rng.int(3, 8);
   for (let i = 0; i < n; i++) {
     clang(v.ctx, dest, { t0: t0 + i * v.rng.range(0.03, 0.09), f: v.rng.range(1800, 3400), gain: gain * v.rng.range(0.4, 1), dur: 0.18, ratios: METAL_RATIOS.slice(0, 4) });
@@ -65,14 +72,14 @@ function chainRattle(v, dest, t0, gain) {
 }
 
 // Wooden creak: resonant pink noise sweeping down, like strained timber.
-function creak(v, dest, t0, gain) {
+function creak(v: Voice, dest: AudioNode, t0: number, gain: number): number {
   const dur = v.rng.range(0.4, 1.1);
   burst(v.ctx, dest, v.rng, { t0, dur, kind: 'pink', a: 0.08, r: dur * 0.5, gain, filter: { type: 'bandpass', f: v.rng.range(400, 700), Q: 11, f1: v.rng.range(180, 320) } });
   return dur;
 }
 
 // Continuous murmur: pink noise through a vowel bank whose vowel keeps changing.
-function murmur(v, gain, vowels = ['a', 'o', 'e', 'm', 'u']) {
+function murmur(v: Voice, gain: number, vowels: Vowel[] = ['a', 'o', 'e', 'm', 'u']) {
   const fb = formantBank(v.ctx, 'a', 6);
   const src = v.noise('pink', { type: 'bandpass', f: 500, Q: 0.5 }, 1);
   src.disconnect();
@@ -138,7 +145,7 @@ export const VOICES = {
     const pond = v.noise('brown', { type: 'lowpass', f: 400, Q: 0.6 }, 0.05);
     v.lfo(pond.gain, 0.3, 0.02);
     // croak: a pulse train of tiny low tones
-    const croak = (t, f, gain) => {
+    const croak = (t: number, f: number, gain: number) => {
       const n = v.rng.int(4, 8), step = v.rng.range(0.045, 0.07);
       for (let i = 0; i < n; i++) {
         tone(ctx, v.out, { t0: t + i * step, dur: step * 0.75, f, f1: f * 1.08, type: 'sawtooth', gain, a: 0.008, filter: { type: 'bandpass', f: f * 6, Q: 1.5 } });
@@ -270,7 +277,7 @@ export const VOICES = {
   },
   'giant-birds': (ctx, seed) => {
     const v = new Voice(ctx, seed);
-    v.pattern(0.2, (t) => SPECIES[v.rng.pick(['giant', 'crow', 'duck', 'hoopoe', 'woodpecker', 'giant'])](ctx, v.out, v.rng, t, 0.08) + v.rng.range(0.8, 3.5));
+    v.pattern(0.2, (t) => SPECIES[v.rng.pick<SpeciesName>(['giant', 'crow', 'duck', 'hoopoe', 'woodpecker', 'giant'])](ctx, v.out, v.rng, t, 0.08) + v.rng.range(0.8, 3.5));
     v.pattern(0.9, (t) => SPECIES.flap(ctx, v.out, v.rng, t, 0.05) + v.rng.range(1, 4));
     murmur(v, 0.012, ['a', 'o', 'e']);
     return v;
@@ -286,14 +293,14 @@ export const VOICES = {
     // two sustained siren voices a fifth apart, vowels and pitch drifting slowly
     const lp = filter(ctx, 'lowpass', 2600, 0.7);
     lp.connect(v.out);
-    [[220, 'o'], [330, 'u']].forEach(([f, vw], i) => {
+    ([[220, 'o'], [330, 'u']] satisfies [number, Vowel][]).forEach(([f, vw], i) => {
       const fb = formantBank(ctx, vw, 10);
       const g = gainNode(ctx, 0.2);
       fb.output.connect(g).connect(lp);
       v.lfo(g.gain, 0.11 + i * 0.04, 0.08);
       const oscs = [-7, 0, 7].map((d) => { const o = v.osc('sawtooth', f, 1, d); o.connect(fb.input); return o.osc; });
       v.pattern(i * 1.3, (t) => {
-        fb.setVowel(t, v.rng.pick(['o', 'u', 'a', 'e']), 0.8);
+        fb.setVowel(t, v.rng.pick<Vowel>(['o', 'u', 'a', 'e']), 0.8);
         const target = f * Math.pow(2, v.rng.pick([-3, -2, 0, 2, 3, 5]) / 12);
         for (const o of oscs) o.frequency.setTargetAtTime(target, t, 0.6);
         return v.rng.range(1.8, 4.5);
@@ -617,7 +624,7 @@ export const VOICES = {
     choir.connect(v.out);
     const luteBus = gainNode(ctx, 0.6);
     luteBus.connect(v.out);
-    const vowels = ['a', 'o', 'e', 'u', 'o', 'a'];
+    const vowels: Vowel[] = ['a', 'o', 'e', 'u', 'o', 'a'];
     let i = 0;
     v.pattern(0.4, (t) => {
       if (i >= notes.length) { i = 0; return beat * 3; } // rest between repeats
@@ -667,7 +674,7 @@ export const VOICES = {
   },
   'clogs-knock': (ctx, seed) => {
     const v = new Voice(ctx, seed);
-    const knock = (t, gain) => {
+    const knock = (t: number, gain: number) => {
       tone(ctx, v.out, { t0: t, dur: 0.12, f: 190, f1: 150, type: 'sine', gain: gain * 1.2, a: 0.002, r: 0.1 });
       burst(ctx, v.out, v.rng, { t0: t, dur: 0.04, tau: 0.008, gain, filter: { type: 'bandpass', f: 1300, Q: 3 } });
     };
@@ -692,12 +699,12 @@ export const VOICES = {
     v.lfo(rumble.gain, 0.17, 0.025);
     return v;
   },
-};
+} satisfies Record<string, VoiceFactory>;
 
-export const VOICE_NAMES = Object.keys(VOICES);
+export const VOICE_NAMES = Object.keys(VOICES) as VoiceType[];
 
 // Which section bus (and therefore which reverb) each voice type belongs to.
-export const VOICE_PANEL = {
+export const VOICE_PANEL: Record<VoiceType, PanelId> = {
   'fountain-owl': 'eden', 'swans': 'eden', 'meadow-beasts': 'eden', 'frogs-reptiles': 'eden',
   'bird-flock': 'eden', 'beasts-fighting': 'eden', 'birds-eden': 'eden', 'water-trickle': 'eden',
   'birds-garden': 'garden', 'splash-pool': 'garden', 'cavalcade': 'garden', 'giant-birds': 'garden',
@@ -709,7 +716,7 @@ export const VOICE_PANEL = {
 
 // Output trims (linear) so every voice lands near -12 dBFS peak / -28 dBFS RMS
 // at gain 1 before the master; tuned from the offline test's raw columns.
-export const TRIM = {
+export const TRIM: Record<VoiceType, number> = {
   'fountain-owl': 1.3, 'swans': 3.5, 'meadow-beasts': 5, 'frogs-reptiles': 2.5, 'bird-flock': 4.5,
   'beasts-fighting': 2.5, 'birds-eden': 1.5, 'water-trickle': 1.5,
   'birds-garden': 3.5, 'splash-pool': 3.5, 'cavalcade': 1, 'giant-birds': 4.5, 'mermaids': 0.4,
@@ -719,7 +726,7 @@ export const TRIM = {
   'rot-flies': 1, 'clogs-knock': 1.6, 'clangs': 1.3,
 };
 
-export function createVoice(type, ctx, seed, o = {}) {
+export function createVoice(type: VoiceType, ctx: BaseAudioContext, seed: number, o: { music?: boolean } = {}): Voice {
   const f = VOICES[type];
   if (!f) throw new Error(`unknown voice type ${type}`);
   const v = f(ctx, seed, { music: !!o.music });

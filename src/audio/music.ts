@@ -5,13 +5,16 @@
 // loops audibly. Every musical generator calls markMusic(); the offline test
 // uses the counter to prove 'nature' mode never instantiates music.
 
-import { Voice, tone, burst, pluck, vowelNote, filter, gainNode, mtof, envelope } from './dsp.js';
-import { BUTTOCK_SONG } from './buttockSong.js';
+import { Voice, tone, burst, pluck, vowelNote, filter, gainNode, mtof, envelope } from './dsp.ts';
+import { BUTTOCK_SONG } from './buttockSong.ts';
+import type { Rng } from './dsp.ts';
+import type { PanelId } from '../scene.ts';
 
 export const musicStats = { instantiated: 0 };
-export function markMusic() { musicStats.instantiated++; }
+export function markMusic(): void { musicStats.instantiated++; }
 
-const MODES = {
+export type ModeName = 'dorian' | 'mixolydian' | 'phrygian' | 'lydian' | 'aeolian';
+const MODES: Record<ModeName, number[]> = {
   dorian: [0, 2, 3, 5, 7, 9, 10],
   mixolydian: [0, 2, 4, 5, 7, 9, 10],
   phrygian: [0, 1, 3, 5, 7, 8, 10],
@@ -20,7 +23,7 @@ const MODES = {
 };
 
 // scale degree (0 = final, may be negative or > 6) -> midi
-export function degToMidi(final, mode, deg) {
+export function degToMidi(final: number, mode: ModeName, deg: number): number {
   const sc = MODES[mode];
   const oct = Math.floor(deg / 7);
   return final + 12 * oct + sc[((deg % 7) + 7) % 7];
@@ -28,13 +31,16 @@ export function degToMidi(final, mode, deg) {
 
 // --- instruments ------------------------------------------------------------
 
-export function lute(ctx, dest, o) {
+// One note of an instrument: start, frequency, length (s), level.
+export interface Note { t0: number; f: number; dur: number; gain: number }
+
+export function lute(ctx: BaseAudioContext, dest: AudioNode, o: Omit<Note, 'dur'> & { dur?: number; bright?: number }): void {
   pluck(ctx, dest, { t0: o.t0, f: o.f, gain: o.gain, dur: o.dur ?? 1.6, bright: o.bright ?? 6 });
   // a second course slightly out of tune gives the double-string shimmer
   pluck(ctx, dest, { t0: o.t0 + 0.006, f: o.f, gain: o.gain * 0.45, dur: (o.dur ?? 1.6) * 0.8, bright: 5, detune: 6 });
 }
 
-export function recorder(ctx, dest, rng, o) {
+export function recorder(ctx: BaseAudioContext, dest: AudioNode, rng: Rng, o: Note): void {
   const { t0, f, dur, gain } = o;
   // tone with a short upward scoop at the onset and a little vibrato
   tone(ctx, dest, { t0, dur, f: f * 0.985, f1: f, glide: 0.05, type: 'triangle', gain, a: 0.035, r: Math.min(0.08, dur * 0.3), vib: { rate: 5.2, depth: 6 }, filter: { type: 'lowpass', f: 3200 } });
@@ -44,7 +50,7 @@ export function recorder(ctx, dest, rng, o) {
   burst(ctx, dest, rng, { t0, dur, kind: 'pink', a: 0.05, r: Math.min(0.1, dur * 0.3), gain: gain * 0.14, filter: { type: 'bandpass', f: 2800, Q: 0.8 } });
 }
 
-export function viol(ctx, dest, rng, o) {
+export function viol(ctx: BaseAudioContext, dest: AudioNode, rng: Rng, o: Note): void {
   const { t0, f, dur, gain } = o;
   const a = Math.min(0.28, dur * 0.35), r = Math.min(0.25, dur * 0.3);
   const env = ctx.createGain();
@@ -71,7 +77,7 @@ export function viol(ctx, dest, rng, o) {
   burst(ctx, env, rng, { t0, dur, kind: 'pink', a: 0.02, r: r, gain: 0.25, filter: { type: 'highpass', f: 2200, Q: 0.7 } });
 }
 
-export function shawm(ctx, dest, o) {
+export function shawm(ctx: BaseAudioContext, dest: AudioNode, o: Note): void {
   const { t0, f, dur, gain } = o;
   tone(ctx, dest, { t0, dur, f: f * 0.99, f1: f, glide: 0.08, type: 'sawtooth', gain, a: 0.06, r: Math.min(0.12, dur * 0.3), filter: { type: 'bandpass', f: 1250, Q: 2.2 }, vib: { rate: 4.8, depth: 7 } });
   tone(ctx, dest, { t0, dur, f, type: 'sawtooth', gain: gain * 0.5, a: 0.06, r: Math.min(0.12, dur * 0.3), filter: { type: 'bandpass', f: 2600, Q: 3 } });
@@ -84,7 +90,11 @@ export function shawm(ctx, dest, o) {
  * with a cadence (approach from above or below onto the final or fifth),
  * separated by rests. play(t, midi, beatsDur) performs one note.
  */
-export function melodyLine(v, cfg, play) {
+export interface MelodyConfig {
+  final: number; mode: ModeName; tempo: number; rhythms: number[]; lo: number; hi: number;
+  phraseMin?: number; phraseMax?: number; restMin?: number; restMax?: number; leapChance?: number; delay?: number;
+}
+export function melodyLine(v: Voice, cfg: MelodyConfig, play: (t: number, midi: number, dur: number, beats: number) => void): void {
   const { final, mode, tempo, rhythms, lo, hi, phraseMin = 5, phraseMax = 9, restMin = 1, restMax = 4, leapChance = 0.15, delay = 0 } = cfg;
   const beat = 60 / tempo;
   const rng = v.rng;
@@ -95,7 +105,7 @@ export function melodyLine(v, cfg, play) {
       cadence = 2;
       return beat * rng.range(restMin, restMax);
     }
-    let next;
+    let next: number;
     if (left > 0) {
       left--;
       const step = rng.chance(leapChance) ? rng.pick([-4, -3, 3, 4]) : rng.pick([-2, -1, -1, 0, 1, 1, 2]);
@@ -120,7 +130,7 @@ const PROGRESSIONS = [[0, 4, 3, 0], [0, 6, 3, 4], [0, 2, 4, 0], [3, 0, 4, 0]];
 
 // --- consorts, one per panel -------------------------------------------------
 
-function edenConsort(ctx, seed) {
+function edenConsort(ctx: BaseAudioContext, seed: number): Voice {
   markMusic();
   const v = new Voice(ctx, seed);
   const tempo = 54, beat = 60 / tempo, final = 62, mode = 'dorian';
@@ -139,7 +149,7 @@ function edenConsort(ctx, seed) {
     if (v.rng.chance(0.85)) viol(ctx, room, v.rng, { t0: t + v.rng.range(0, 0.04), f: mtof(degToMidi(final, mode, root) - 12), dur: beats * beat * 0.95, gain: 0.05 });
     // lute: a gentle arpeggiated chord on the bar, sometimes again on beat 3
     const chord = [root, root + 2, root + 4, root + 7].map((d) => mtof(degToMidi(final, mode, d)));
-    const strum = (tt, g) => chord.forEach((f, i) => lute(ctx, room, { t0: tt + i * 0.035, f, gain: g * (1 - i * 0.12), dur: 2.2 }));
+    const strum = (tt: number, g: number) => chord.forEach((f, i) => lute(ctx, room, { t0: tt + i * 0.035, f, gain: g * (1 - i * 0.12), dur: 2.2 }));
     strum(t, 0.045);
     if (v.rng.chance(0.5)) strum(t + 2 * beat, 0.03);
     return beats * beat;
@@ -147,7 +157,7 @@ function edenConsort(ctx, seed) {
   return v;
 }
 
-function gardenConsort(ctx, seed) {
+function gardenConsort(ctx: BaseAudioContext, seed: number): Voice {
   markMusic();
   const v = new Voice(ctx, seed);
   const tempo = 116, beat = 60 / tempo, final = 67, mode = 'mixolydian';
@@ -177,7 +187,7 @@ function gardenConsort(ctx, seed) {
   return v;
 }
 
-function hellConsort(ctx, seed) {
+function hellConsort(ctx: BaseAudioContext, seed: number): Voice {
   markMusic();
   const v = new Voice(ctx, seed);
   const tempo = 58, beat = 60 / tempo, final = 52, mode = 'phrygian';
@@ -209,4 +219,4 @@ function hellConsort(ctx, seed) {
   return v;
 }
 
-export const MUSIC_BEDS = { eden: edenConsort, garden: gardenConsort, hell: hellConsort };
+export const MUSIC_BEDS: Record<PanelId, (ctx: BaseAudioContext, seed: number) => Voice> = { eden: edenConsort, garden: gardenConsort, hell: hellConsort };

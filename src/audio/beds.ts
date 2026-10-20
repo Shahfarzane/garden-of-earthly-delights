@@ -1,10 +1,14 @@
 // Section beds ('nature' layer): one continuous real-world ambience per panel,
-// crossfaded by the view. No pads or drones; period music lives in music.js.
+// crossfaded by the view. No pads or drones; period music lives in music.ts.
 
-import { Voice, burst, clang, tone, BELL_RATIOS, filter } from './dsp.js';
-import { addBirdChorus } from './birds.js';
+import { Voice, burst, clang, tone, BELL_RATIOS, filter } from './dsp.ts';
+import { addBirdChorus } from './birds.ts';
+import type { PanelId } from '../scene.ts';
 
-export function edenBed(ctx, seed) {
+// A section bed: one continuous ambience per panel.
+export type Bed = (ctx: BaseAudioContext, seed: number) => Voice;
+
+export function edenBed(ctx: BaseAudioContext, seed: number): Voice {
   const v = new Voice(ctx, seed);
   // breeze: pink noise through a wandering bandpass
   const breeze = v.noise('pink', { type: 'bandpass', f: 650, Q: 0.6 }, 0.045);
@@ -25,7 +29,7 @@ export function edenBed(ctx, seed) {
   return v;
 }
 
-export function gardenBed(ctx, seed) {
+export function gardenBed(ctx: BaseAudioContext, seed: number): Voice {
   const v = new Voice(ctx, seed);
   // many bird species, two overlapping chorus patterns
   const near = filter(ctx, 'lowpass', 7000, 0.7);
@@ -45,7 +49,7 @@ export function gardenBed(ctx, seed) {
   return v;
 }
 
-export function hellBed(ctx, seed) {
+export function hellBed(ctx: BaseAudioContext, seed: number): Voice {
   const v = new Voice(ctx, seed);
   // rumble: the only low layer, breathing slowly
   const rumble = v.noise('brown', { type: 'lowpass', f: 110, Q: 0.8 }, 0.2);
@@ -89,7 +93,7 @@ export function hellBed(ctx, seed) {
 }
 
 // Output trims, tuned from the offline test's raw columns (beds sit lower than voices).
-const BED_TRIM = { eden: 2.2, garden: 2.5, hell: 0.5 };
-const trimmed = (make, name) => (ctx, seed) => { const v = make(ctx, seed); v.out.gain.value = BED_TRIM[name]; return v; };
+const BED_TRIM: Record<PanelId, number> = { eden: 2.2, garden: 2.5, hell: 0.5 };
+const trimmed = (make: Bed, name: PanelId): Bed => (ctx, seed) => { const v = make(ctx, seed); v.out.gain.value = BED_TRIM[name]; return v; };
 
-export const BEDS = { eden: trimmed(edenBed, 'eden'), garden: trimmed(gardenBed, 'garden'), hell: trimmed(hellBed, 'hell') };
+export const BEDS: Record<PanelId, Bed> = { eden: trimmed(edenBed, 'eden'), garden: trimmed(gardenBed, 'garden'), hell: trimmed(hellBed, 'hell') };

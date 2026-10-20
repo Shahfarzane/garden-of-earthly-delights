@@ -4,7 +4,7 @@ import { Renderer } from './engine/renderer.ts';
 import { Post } from './engine/post.ts';
 import { UI } from './ui/ui.js';
 import { Shutters } from './ui/shutters.js';
-import { Soundscape } from './audio/soundscape.js';
+import { Soundscape } from './audio/soundscape.ts';
 import { LifeLayer } from './living/layer.js';
 import { Animator } from './living/animator.js';
 import { RIGS } from './living/rigs.js';

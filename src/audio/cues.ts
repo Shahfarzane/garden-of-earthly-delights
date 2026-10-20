@@ -1,6 +1,10 @@
 // Short UI sounds. Each cue is a one-shot scheduled into `dest` at time t0.
 
-import { tone, burst, clang, pluck, filter, gainNode, envelope, Rng, BELL_RATIOS } from './dsp.js';
+import { tone, burst, clang, pluck, filter, gainNode, envelope, Rng, BELL_RATIOS } from './dsp.ts';
+
+// Schedules the cue at t0 into dest; returns its length in seconds.
+type Cue = (ctx: BaseAudioContext, dest: AudioNode, t0: number, rng: Rng) => number;
+export type CueName = keyof typeof CUES;
 
 const CHORD = [146.83, 220, 293.66, 440]; // D A D A: open fifths
 
@@ -59,11 +63,11 @@ export const CUES = {
     tone(ctx, dest, { t0: t0 + 0.03, dur: 0.35, f: 660, f1: 440, type: 'triangle', gain: 0.03, a: 0.01, r: 0.25 });
     return 0.5;
   },
-};
+} satisfies Record<string, Cue>;
 
-const CUE_TRIM = { open: 1, poi: 1.5, tour: 1.3, close: 1.8, thunder: 0.6 };
+const CUE_TRIM: Record<CueName, number> = { open: 1, poi: 1.5, tour: 1.3, close: 1.8, thunder: 0.6 };
 
-export function playCue(name, ctx, dest, t0 = ctx.currentTime + 0.01, rng = new Rng(Date.now() & 0xffff), gain = 1) {
+export function playCue(name: CueName, ctx: BaseAudioContext, dest: AudioNode, t0 = ctx.currentTime + 0.01, rng = new Rng(Date.now() & 0xffff), gain = 1): number {
   const c = CUES[name];
   if (!c) return 0;
   const trim = gainNode(ctx, (CUE_TRIM[name] ?? 1) * gain);

@@ -3,6 +3,7 @@
 // Voice base class that every bed and positional voice builds on.
 
 export class Rng {
+  s: number;
   constructor(seed = 1) { this.s = (seed >>> 0) || 1; }
   // mulberry32
   next() {
@@ -11,24 +12,27 @@ export class Rng {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
-  range(a, b) { return a + (b - a) * this.next(); }
-  int(a, b) { return Math.floor(this.range(a, b + 1)); }
-  pick(arr) { return arr[Math.floor(this.next() * arr.length)]; }
-  chance(p) { return this.next() < p; }
+  range(a: number, b: number): number { return a + (b - a) * this.next(); }
+  int(a: number, b: number): number { return Math.floor(this.range(a, b + 1)); }
+  pick<T>(arr: readonly T[]): T { return arr[Math.floor(this.next() * arr.length)]; }
+  chance(p: number): boolean { return this.next() < p; }
   // 0-centred, roughly gaussian
   gauss() { return (this.next() + this.next() + this.next() - 1.5) * 2; }
 }
 
-export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
-export const dB = (g) => (g <= 0 ? -Infinity : 20 * Math.log10(g));
-export const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+export const clamp = (v: number, a: number, b: number): number => (v < a ? a : v > b ? b : v);
+export const dB = (g: number): number => (g <= 0 ? -Infinity : 20 * Math.log10(g));
+export const mtof = (m: number): number => 440 * Math.pow(2, (m - 69) / 12);
 
 // --- Shared per-context resources -----------------------------------------
 
-const sharedByCtx = new WeakMap();
+export type NoiseKind = 'white' | 'pink' | 'brown';
+interface SharedResources extends Record<NoiseKind, AudioBuffer> { cache: Map<unknown, unknown> }
+
+const sharedByCtx = new WeakMap<BaseAudioContext, SharedResources>();
 
 // Noise buffers are generated once per context and shared by every voice.
-export function sharedResources(ctx) {
+export function sharedResources(ctx: BaseAudioContext): SharedResources {
   let s = sharedByCtx.get(ctx);
   if (s) return s;
   const sr = ctx.sampleRate;
@@ -60,7 +64,7 @@ export function sharedResources(ctx) {
 }
 
 // Looping noise source with a random start offset so voices decorrelate.
-export function noiseSource(ctx, kind, rng, rate = 1, when = ctx.currentTime) {
+export function noiseSource(ctx: BaseAudioContext, kind: NoiseKind, rng: Rng | null | undefined, rate = 1, when = ctx.currentTime): AudioBufferSourceNode {
   const buf = sharedResources(ctx)[kind];
   const src = ctx.createBufferSource();
   src.buffer = buf;
@@ -70,7 +74,7 @@ export function noiseSource(ctx, kind, rng, rate = 1, when = ctx.currentTime) {
   return src;
 }
 
-export function filter(ctx, type, f, Q = 1, gain = 0) {
+export function filter(ctx: BaseAudioContext, type: BiquadFilterType, f: number, Q = 1, gain = 0): BiquadFilterNode {
   const fl = ctx.createBiquadFilter();
   fl.type = type;
   fl.frequency.value = f;
@@ -79,14 +83,14 @@ export function filter(ctx, type, f, Q = 1, gain = 0) {
   return fl;
 }
 
-export function gainNode(ctx, g = 1) {
+export function gainNode(ctx: BaseAudioContext, g = 1): GainNode {
   const n = ctx.createGain();
   n.gain.value = g;
   return n;
 }
 
 // Low-frequency oscillator wired into an AudioParam: param = base + depth*sin.
-export function lfo(ctx, param, rate, depth, type = 'sine', phase = 0) {
+export function lfo(ctx: BaseAudioContext, param: AudioParam, rate: number, depth: number, type: OscillatorType = 'sine', phase = 0): OscillatorNode {
   const osc = ctx.createOscillator();
   osc.type = type;
   osc.frequency.value = rate;
@@ -99,7 +103,7 @@ export function lfo(ctx, param, rate, depth, type = 'sine', phase = 0) {
 // --- One-shot events --------------------------------------------------------
 
 // Linear attack, optional hold, linear release. Returns the end time.
-export function envelope(param, t0, peak, a, dur, r) {
+export function envelope(param: AudioParam, t0: number, peak: number, a: number, dur: number, r: number): number {
   param.value = 0; // silent until t0 (a GainNode defaults to 1)
   a = Math.min(a, dur * 0.5);
   r = Math.min(r, dur - a);
@@ -111,7 +115,7 @@ export function envelope(param, t0, peak, a, dur, r) {
 }
 
 // Percussive: instant-ish attack then exponential decay (setTarget).
-export function decayEnv(param, t0, peak, a, tau, dur) {
+export function decayEnv(param: AudioParam, t0: number, peak: number, a: number, tau: number, dur: number): void {
   param.value = 0;
   param.setValueAtTime(0, t0);
   param.linearRampToValueAtTime(peak, t0 + a);
@@ -119,11 +123,21 @@ export function decayEnv(param, t0, peak, a, tau, dur) {
   param.setValueAtTime(0, t0 + dur);
 }
 
+// A filter on a one-shot: f1 sweeps the cutoff to f1 over the event.
+export interface FilterSpec { type: BiquadFilterType; f: number; Q?: number; f1?: number }
+// Vibrato: rate in Hz, depth in cents.
+export interface Vibrato { rate: number; depth: number }
+
 /**
  * Oscillator tone with amplitude envelope and optional pitch glide/filter.
  * o: { t0, dur, f, f1, type, gain, a, r, detune, filter:{type,f,Q,f1}, vib:{rate,depth} }
  */
-export function tone(ctx, dest, o) {
+export interface ToneOptions {
+  t0: number; dur: number; f: number;
+  f1?: number; glide?: number; type?: OscillatorType; gain?: number; a?: number; r?: number; detune?: number;
+  filter?: FilterSpec; vib?: Vibrato;
+}
+export function tone(ctx: BaseAudioContext, dest: AudioNode, o: ToneOptions): OscillatorNode {
   const { t0, dur, f, type = 'sine', gain = 0.1 } = o;
   const a = o.a ?? 0.01, r = o.r ?? Math.min(0.08, dur * 0.5);
   const osc = ctx.createOscillator();
@@ -131,7 +145,7 @@ export function tone(ctx, dest, o) {
   osc.frequency.setValueAtTime(f, t0);
   if (o.f1 && o.f1 !== f) osc.frequency.exponentialRampToValueAtTime(o.f1, t0 + (o.glide ?? dur));
   if (o.detune) osc.detune.value = o.detune;
-  let vibOsc = null;
+  let vibOsc: OscillatorNode | null = null;
   if (o.vib) {
     vibOsc = ctx.createOscillator();
     vibOsc.frequency.value = o.vib.rate;
@@ -142,7 +156,7 @@ export function tone(ctx, dest, o) {
   }
   const g = ctx.createGain();
   envelope(g.gain, t0, gain, a, dur, r);
-  let head = osc;
+  let head: AudioNode = osc;
   if (o.filter) {
     const fl = filter(ctx, o.filter.type, o.filter.f, o.filter.Q ?? 1);
     if (o.filter.f1) {
@@ -162,13 +176,17 @@ export function tone(ctx, dest, o) {
  * Filtered noise burst. o: { t0, dur, kind, filter:{type,f,Q,f1}, gain, a, tau, rate }
  * With tau the envelope is percussive (exp decay), otherwise linear a/r.
  */
-export function burst(ctx, dest, rng, o) {
+export interface BurstOptions {
+  t0: number; dur: number;
+  kind?: NoiseKind; gain?: number; a?: number; r?: number; tau?: number; rate?: number; filter?: FilterSpec;
+}
+export function burst(ctx: BaseAudioContext, dest: AudioNode, rng: Rng | undefined, o: BurstOptions): AudioBufferSourceNode {
   const { t0, dur, kind = 'white', gain = 0.1 } = o;
   const src = noiseSource(ctx, kind, rng, o.rate ?? 1, t0 - 0.01);
   const g = ctx.createGain();
   if (o.tau != null) decayEnv(g.gain, t0, gain, o.a ?? 0.003, o.tau, dur);
   else envelope(g.gain, t0, gain, o.a ?? 0.01, dur, o.r ?? Math.min(0.1, dur * 0.5));
-  let head = src;
+  let head: AudioNode = src;
   if (o.filter) {
     const fl = filter(ctx, o.filter.type, o.filter.f, o.filter.Q ?? 1);
     if (o.filter.f1) {
@@ -188,7 +206,8 @@ export function burst(ctx, dest, rng, o) {
  * quickly, with an exponential amplitude decay. One oscillator + one filter
  * per note, far cheaper than a delay-line string and plausible for lute/harp.
  */
-export function pluck(ctx, dest, o) {
+export interface PluckOptions { t0: number; f: number; gain?: number; dur?: number; bright?: number; type?: OscillatorType; detune?: number }
+export function pluck(ctx: BaseAudioContext, dest: AudioNode, o: PluckOptions): OscillatorNode {
   const { t0, f, gain = 0.15, dur = 1.5, bright = 7 } = o;
   const osc = ctx.createOscillator();
   osc.type = o.type ?? 'sawtooth';
@@ -208,8 +227,9 @@ export function pluck(ctx, dest, o) {
 export const METAL_RATIOS = [1, 1.47, 2.09, 2.56, 3.01, 4.17];
 export const BELL_RATIOS = [0.5, 1, 1.183, 1.506, 2.0, 2.514, 3.011];
 
-/** Inharmonic partial cluster: bells, anvils, clanks. */
-export function clang(ctx, dest, o) {
+/** Inharmonic partial cluster: bells, anvils, clanks. strike adds a noise transient (with rng). */
+export interface ClangOptions { t0: number; f: number; gain?: number; dur?: number; ratios?: readonly number[]; spread?: number; strike?: boolean; rng?: Rng }
+export function clang(ctx: BaseAudioContext, dest: AudioNode, o: ClangOptions): GainNode {
   const { t0, f, gain = 0.1, dur = 1.0, ratios = METAL_RATIOS } = o;
   const g = ctx.createGain();
   g.gain.value = 1;
@@ -233,7 +253,8 @@ export function clang(ctx, dest, o) {
 }
 
 /** Drum hit: pitched sine thump plus a short noise transient. */
-export function drum(ctx, dest, rng, o) {
+export interface DrumOptions { t0: number; f?: number; gain?: number; dur?: number; snap?: number; snapF?: number }
+export function drum(ctx: BaseAudioContext, dest: AudioNode, rng: Rng, o: DrumOptions): void {
   const { t0, f = 90, gain = 0.3, dur = 0.35 } = o;
   const osc = ctx.createOscillator();
   osc.type = 'sine';
@@ -250,7 +271,8 @@ export function drum(ctx, dest, rng, o) {
 // --- Vowels / formants -------------------------------------------------------
 
 // F1..F3 centre frequencies (Hz) and relative gains for a generic adult voice.
-export const VOWELS = {
+export type Vowel = 'a' | 'e' | 'i' | 'o' | 'u' | 'm';
+export const VOWELS: Record<Vowel, { f: number[]; g: number[] }> = {
   a: { f: [800, 1150, 2900], g: [1, 0.5, 0.25] },
   e: { f: [400, 1700, 2600], g: [1, 0.35, 0.2] },
   i: { f: [300, 2000, 2800], g: [1, 0.25, 0.2] },
@@ -263,7 +285,13 @@ export const VOWELS = {
  * Three parallel bandpass "formants". Returns { input, output, setVowel(t, v, glide) }.
  * Feed it sawtooths (voices) or noise (whispers, murmur).
  */
-export function formantBank(ctx, vowel = 'a', Q = 9) {
+export interface FormantBank {
+  input: GainNode;
+  output: GainNode;
+  setVowel(t: number, v: Vowel, glide?: number): void;
+  bands: { bp: BiquadFilterNode; g: GainNode }[];
+}
+export function formantBank(ctx: BaseAudioContext, vowel: Vowel = 'a', Q = 9): FormantBank {
   const input = ctx.createGain();
   const output = ctx.createGain();
   const bands = [0, 1, 2].map(() => {
@@ -272,7 +300,7 @@ export function formantBank(ctx, vowel = 'a', Q = 9) {
     input.connect(bp).connect(g).connect(output);
     return { bp, g };
   });
-  function setVowel(t, v, glide = 0.08) {
+  function setVowel(t: number, v: Vowel, glide = 0.08) {
     const vw = VOWELS[v] || VOWELS.a;
     bands.forEach((b, i) => {
       b.bp.frequency.setTargetAtTime(vw.f[i], t, glide / 3);
@@ -287,7 +315,11 @@ export function formantBank(ctx, vowel = 'a', Q = 9) {
  * A sung/spoken vowel: detuned sawtooths through a formant bank.
  * o: { t0, dur, f, f1, vowels:[['a',0],['o',0.5]] (vowel, fraction of dur), gain, vib, a, r }
  */
-export function vowelNote(ctx, dest, o) {
+export interface VowelNoteOptions {
+  t0: number; dur: number; f: number;
+  f1?: number; vowels?: [Vowel, number][]; gain?: number; voices?: number; detune?: number; vib?: Vibrato; a?: number; r?: number;
+}
+export function vowelNote(ctx: BaseAudioContext, dest: AudioNode, o: VowelNoteOptions): GainNode {
   const { t0, dur, f, gain = 0.1 } = o;
   const fb = formantBank(ctx, (o.vowels && o.vowels[0][0]) || 'a');
   for (const [v, frac] of o.vowels || []) fb.setVowel(t0 + dur * frac, v, 0.12);
@@ -322,8 +354,22 @@ export function vowelNote(ctx, dest, o) {
  * dispose, and "patterns": generators that schedule one-shot events ahead of
  * the clock. schedule(until) advances every pattern up to `until`.
  */
+// What Voice.noise and Voice.osc return: the level, with the source (and filter) it carries.
+export type NoiseGain = GainNode & { src: AudioBufferSourceNode };
+export type FilteredNoiseGain = NoiseGain & { filter: BiquadFilterNode };
+export type OscGain = GainNode & { osc: OscillatorNode };
+// Schedules one event at time t; returns seconds until the next (falsy: half a second).
+export type Pattern = (t: number) => number;
+
 export class Voice {
-  constructor(ctx, seed = 1) {
+  ctx: BaseAudioContext;
+  rng: Rng;
+  out: GainNode;
+  sources: AudioScheduledSourceNode[];
+  patterns: { t: number; fn: Pattern }[];
+  disposed: boolean;
+
+  constructor(ctx: BaseAudioContext, seed = 1) {
     this.ctx = ctx;
     this.rng = new Rng(seed);
     this.out = ctx.createGain();
@@ -332,10 +378,10 @@ export class Voice {
     this.patterns = [];
     this.disposed = false;
   }
-  keep(node) { this.sources.push(node); return node; }
+  keep<T extends AudioScheduledSourceNode>(node: T): T { this.sources.push(node); return node; }
   // fn(t) schedules one event at time t and returns seconds until the next.
-  pattern(delay, fn) { this.patterns.push({ t: this.ctx.currentTime + delay, fn }); }
-  schedule(until) {
+  pattern(delay: number, fn: Pattern): void { this.patterns.push({ t: this.ctx.currentTime + delay, fn }); }
+  schedule(until: number): void {
     if (this.disposed) return;
     const now = this.ctx.currentTime;
     for (const p of this.patterns) {
@@ -348,9 +394,11 @@ export class Voice {
       }
     }
   }
-  noise(kind, fl, g = 0.1, rate = 1) {
+  noise(kind: NoiseKind, fl: FilterSpec, g?: number, rate?: number): FilteredNoiseGain;
+  noise(kind: NoiseKind, fl: null, g?: number, rate?: number): NoiseGain;
+  noise(kind: NoiseKind, fl: FilterSpec | null, g = 0.1, rate = 1): NoiseGain {
     const src = this.keep(noiseSource(this.ctx, kind, this.rng, rate));
-    const gn = gainNode(this.ctx, g);
+    const gn = gainNode(this.ctx, g) as NoiseGain & { filter?: BiquadFilterNode };
     if (fl) {
       const f = filter(this.ctx, fl.type, fl.f, fl.Q ?? 1);
       src.connect(f).connect(gn);
@@ -360,19 +408,19 @@ export class Voice {
     gn.src = src;
     return gn;
   }
-  osc(type, f, g = 0.1, detune = 0) {
+  osc(type: OscillatorType, f: number, g = 0.1, detune = 0): OscGain {
     const o = this.keep(this.ctx.createOscillator());
     o.type = type;
     o.frequency.value = f;
     o.detune.value = detune;
     o.start();
-    const gn = gainNode(this.ctx, g);
+    const gn = gainNode(this.ctx, g) as OscGain;
     o.connect(gn);
     gn.osc = o;
     return gn;
   }
-  lfo(param, rate, depth, type) { return this.keep(lfo(this.ctx, param, rate, depth, type)); }
-  dispose() {
+  lfo(param: AudioParam, rate: number, depth: number, type?: OscillatorType): OscillatorNode { return this.keep(lfo(this.ctx, param, rate, depth, type)); }
+  dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     for (const n of this.sources) { try { n.stop(); } catch { /* already stopped */ } }
@@ -388,7 +436,8 @@ export class Voice {
  * with a few early reflections and a short predelay.
  * o: { seconds, decay (dB/s-ish factor), lowpassStart, lowpassEnd, predelay, early, seed }
  */
-export function makeImpulse(ctx, o) {
+export interface ImpulseOptions { seconds: number; decay: number; lowpassStart: number; lowpassEnd: number; predelay?: number; early?: number; seed?: number }
+export function makeImpulse(ctx: BaseAudioContext, o: ImpulseOptions): AudioBuffer {
   const sr = ctx.sampleRate;
   const n = Math.floor(sr * o.seconds);
   const buf = ctx.createBuffer(2, n, sr);

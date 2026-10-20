@@ -2,37 +2,50 @@
 // a draggable virtual view centre, zoom slider, voice solo list, cue buttons,
 // focus select and the offline render test.
 
-import { Soundscape } from './soundscape.js';
-import { VOICE_NAMES, VOICE_PANEL } from './voices.js';
-import { runOfflineTest } from './offlineTest.js';
+import { Soundscape } from './soundscape.ts';
+import { VOICE_NAMES, VOICE_PANEL } from './voices.ts';
+import { runOfflineTest } from './offlineTest.ts';
+import type { TestRow } from './offlineTest.ts';
+import type { CueName } from './cues.ts';
+import type { SoundMode } from './soundscape.ts';
+import type { VoiceType } from './voices.ts';
+import type { PanelId, Scene } from '../scene.ts';
 
-const $ = (sel) => document.querySelector(sel);
-const el = (tag, attrs = {}, ...kids) => {
+declare global {
+  interface Window {
+    __soundscape?: Soundscape;
+    __audioTest?: { rows: TestRow[]; summary: string; done: boolean };
+  }
+}
+
+// every element the harness looks up is in dev/audio.html
+const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
+const el = <K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string | EventListener> = {}, ...kids: (Node | string)[]) => {
   const n = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
-    if (k === 'class') n.className = v;
-    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
-    else n.setAttribute(k, v);
+    if (k === 'class') n.className = v as string;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v as EventListener);
+    else n.setAttribute(k, v as string);
   }
   for (const k of kids) n.append(k);
   return n;
 };
 
-const PANEL_COLOR = { eden: '#5fae6a', garden: '#d8b74a', hell: '#c75b4a' };
+const PANEL_COLOR: Record<PanelId, string> = { eden: '#5fae6a', garden: '#d8b74a', hell: '#c75b4a' };
 const VIEW_W = 1280, VIEW_H = 800;
 const SCALE_MIN = 0.006, SCALE_MAX = 2.0;
 
 async function main() {
-  const scene = await (await fetch(`${import.meta.env.BASE_URL}data/scene.json`)).json();
+  const scene: Scene = await (await fetch(`${import.meta.env.BASE_URL}data/scene.json`)).json();
   const sc = new Soundscape(scene);
   window.__soundscape = sc;
 
   const view = { cx: 78000, cy: 44000, scale: 0.006, viewW: VIEW_W, viewH: VIEW_H, time: 0 };
   const W = scene.world.w, H = scene.world.h;
-  const canvas = $('#map');
+  const canvas = $<HTMLCanvasElement>('#map');
   const k = canvas.width / W;
   canvas.height = Math.round(H * k);
-  const g2 = canvas.getContext('2d');
+  const g2 = canvas.getContext('2d')!;
 
   function draw() {
     g2.clearRect(0, 0, canvas.width, canvas.height);
@@ -65,7 +78,7 @@ async function main() {
   }
 
   let dragging = false;
-  const setCentre = (ev) => {
+  const setCentre = (ev: PointerEvent) => {
     const r = canvas.getBoundingClientRect();
     view.cx = ((ev.clientX - r.left) / r.width) * W;
     view.cy = ((ev.clientY - r.top) / r.height) * H;
@@ -74,21 +87,21 @@ async function main() {
   canvas.addEventListener('pointermove', (e) => { if (dragging) setCentre(e); });
   window.addEventListener('pointerup', () => { dragging = false; });
 
-  const zoom = $('#zoom');
-  const zoomToScale = (v) => Math.exp(Math.log(SCALE_MIN) + (Math.log(SCALE_MAX) - Math.log(SCALE_MIN)) * v);
+  const zoom = $<HTMLInputElement>('#zoom');
+  const zoomToScale = (v: number) => Math.exp(Math.log(SCALE_MIN) + (Math.log(SCALE_MAX) - Math.log(SCALE_MIN)) * v);
   zoom.addEventListener('input', () => { view.scale = zoomToScale(+zoom.value); $('#zoomVal').textContent = view.scale.toFixed(4); });
   view.scale = zoomToScale(+zoom.value);
   $('#zoomVal').textContent = view.scale.toFixed(4);
 
   $('#start').addEventListener('click', async () => { await sc.start(); $('#start').textContent = 'Audio running'; });
-  $('#mute').addEventListener('change', (e) => sc.setMuted(e.target.checked));
-  $('#mode').addEventListener('change', (e) => sc.setMode(e.target.value));
-  sc.setMode($('#mode').value);
-  $('#volume').addEventListener('input', (e) => sc.setVolume(+e.target.value));
-  for (const name of ['open', 'poi', 'tour', 'thunder', 'close']) {
+  $('#mute').addEventListener('change', (e) => sc.setMuted((e.target as HTMLInputElement).checked));
+  $('#mode').addEventListener('change', (e) => sc.setMode((e.target as HTMLSelectElement).value as SoundMode));
+  sc.setMode($<HTMLSelectElement>('#mode').value as SoundMode);
+  $('#volume').addEventListener('input', (e) => sc.setVolume(+(e.target as HTMLInputElement).value));
+  for (const name of ['open', 'poi', 'tour', 'thunder', 'close'] satisfies CueName[]) {
     $('#cues').append(el('button', { onclick: () => sc.cue(name) }, name));
   }
-  const focusSel = $('#focus');
+  const focusSel = $<HTMLSelectElement>('#focus');
   focusSel.append(el('option', { value: '' }, '(no focus)'));
   for (const p of [...scene.pois].sort((a, b) => a.title.localeCompare(b.title))) {
     focusSel.append(el('option', { value: p.id }, `${p.title} [${p.panel}]`));
@@ -96,13 +109,13 @@ async function main() {
   focusSel.addEventListener('change', () => {
     sc.focus(focusSel.value || null);
     const poi = scene.pois.find((p) => p.id === focusSel.value);
-    if (poi && $('#jump').checked) { view.cx = poi.x; view.cy = poi.y; }
+    if (poi && $<HTMLInputElement>('#jump').checked) { view.cx = poi.x; view.cy = poi.y; }
   });
 
   // voice list with solo buttons
   const list = $('#voices');
-  let soloed = null;
-  const soloButtons = new Map();
+  let soloed: VoiceType | null = null;
+  const soloButtons = new Map<VoiceType, HTMLElement>();
   for (const name of VOICE_NAMES) {
     const btn = el('button', { class: 'solo', onclick: () => {
       soloed = soloed === name ? null : name;
@@ -124,7 +137,7 @@ async function main() {
   }
 
   let frames = 0;
-  function loop(t) {
+  function loop(t: number) {
     view.time = t / 1000;
     sc.update(view);
     if (frames++ % 6 === 0) { draw(); renderActive(); }

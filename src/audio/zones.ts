@@ -9,9 +9,18 @@
 // overlapping POA already carries the same voice), so no story point is silent
 // and focus(poiId) always has a voice to bring forward.
 
+import type { PanelId, Poi, Scene } from '../scene.ts';
+import type { VoiceType } from './voices.ts';
+
+// A place that sounds: from a museum POA ('poa'), or a story point with a voice of its own ('poi').
+export interface Zone {
+  id: string; x: number; y: number; r: number; panel: PanelId;
+  volume: number; type: VoiceType; poiId: string | null; source: 'poa' | 'poi'; poiTitle: string | null;
+}
+
 const OVERVIEW_R = 15000;
 
-export const POI_VOICE = {
+export const POI_VOICE: Record<string, VoiceType> = {
   // Eden
   'The Fountain': 'fountain-owl',
   "Swan's Fraternity": 'swans',
@@ -60,18 +69,18 @@ export const POI_VOICE = {
   'Ear and Knife': 'ear-knife',
 };
 
-function panelDefault(panel, y, i) {
+function panelDefault(panel: PanelId, y: number, i: number): VoiceType {
   if (panel === 'eden') return y < 25000 ? 'bird-flock' : y > 70000 ? 'water-trickle' : 'birds-eden';
   if (panel === 'garden') return y < 22000 ? 'birds-garden' : y > 60000 ? 'crowd-murmur' : i % 2 ? 'birds-garden' : 'crowd-murmur';
   return y < 22000 ? 'city-fire' : y > 70000 ? 'sinners-groans' : i % 2 ? 'clangs' : 'sinners-groans';
 }
 
-export function buildZones(scene) {
+export function buildZones(scene: Scene): Zone[] {
   const pois = scene.pois.filter((p) => p.r <= OVERVIEW_R);
-  const zones = [];
+  const zones: Zone[] = [];
 
   for (const poa of scene.poas) {
-    let best = null, bestD = Infinity;
+    let best: Poi | null = null, bestD = Infinity;
     for (const poi of pois) {
       if (poi.panel !== poa.panel) continue;
       const d = Math.hypot(poi.x - poa.x, poi.y - poa.y);
