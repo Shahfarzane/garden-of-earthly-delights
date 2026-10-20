@@ -1,24 +1,25 @@
-// The interface around the painting, kept out of the way: quiet story markers, a story
-// drawer, a control rail with sound and stroke popovers, the wings control and a minimap.
+// The interface around the painting, in Mirage's design (docs/plan.md, Round 7): breadcrumbs back to
+// the Mirage index, the painting's buttons and the menu top right, zoom bottom right, quiet story
+// markers, a story drawer, the sound and strokes panels and a minimap.
 import { WORLD_W, WORLD_H } from '../world.js';
 
+// The Mirage index. Mirage takes over mirage.nerd.ceo, where the Garden lives today, and the
+// Garden's own address is not settled yet (docs/plan.md, Round 7): change it here only.
+export const MIRAGE_URL = 'https://mirage.nerd.ceo/';
+const SOURCE_URL = 'https://github.com/Shahfarzane/garden-of-earthly-delights';
+
 const ICON = {
-  zoomIn: '<path d="M10 4.5v11M4.5 10h11"/>',
-  zoomOut: '<path d="M4.5 10h11"/>',
-  fit: '<path d="M3.5 7.5v-4h4M12.5 3.5h4v4M16.5 12.5v4h-4M7.5 16.5h-4v-4"/>',
-  stories: '<circle cx="10" cy="10" r="2" fill="currentColor"/><circle cx="10" cy="10" r="6.5"/>',
-  soundOn: '<path d="M3.5 8h3l4-3.5v11L6.5 12h-3z"/><path d="M13.5 7.5a3.5 3.5 0 0 1 0 5M15.5 5a7 7 0 0 1 0 10"/>',
-  soundOff: '<path d="M3.5 8h3l4-3.5v11L6.5 12h-3z"/><path d="M13.5 8l4 4M17.5 8l-4 4"/>',
-  age: '<rect x="3.5" y="3.5" width="13" height="13" rx="1.5"/><path d="M3.5 9l4 1 2-3 3 2 4-1M8 16.5l1-6.5M12.5 9.5l1 7"/>',
-  motion: '<path d="M2.5 11.5c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3"/><path d="M2.5 15.5c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3" opacity=".45"/>',
-  full: '<path d="M3.5 7.5v-4h4M12.5 3.5h4v4M16.5 12.5v4h-4M7.5 16.5h-4v-4"/>',
-  strokes: '<path d="M3 15.5c3-1 4.5-4.5 7.5-6s4.5-.5 6.5-3"/><path d="M3.5 11c2-.8 3-3.2 5.2-4.2" opacity=".5"/><path d="M8 17c2.4-.6 4.2-2.2 6.2-3.6" opacity=".5"/>',
-  wings: '<rect x="7" y="3.5" width="6" height="13" rx="0.8"/><path d="M7 3.5 3 5v10l4 1.5M13 3.5 17 5v10l-4 1.5"/>',
-  close: '<path d="M5 5l10 10M15 5 5 15"/>',
+  menu: '<path d="M1.5 4h13M1.5 8h13M1.5 12h13"/>',
+  arrowNe: '<path d="M5 11 11 5M6.5 5H11v4.5"/>',
 };
-const svg = (name) => `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
+const svg = (name) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">${ICON[name]}</svg>`;
 
 const PANEL_NAME = { eden: 'Paradise, left wing', garden: 'The garden, centre panel', hell: 'Hell, right wing' };
+const SOUND_NOTE = {
+  off: 'No sound.',
+  nature: 'Birds, water, wind and fire where you look.',
+  period: 'Lute, recorder and viol, about 1500, with the nature sounds.',
+};
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
 function el(tag, attrs = {}, html = '') {
@@ -59,7 +60,7 @@ export class UI {
     // markers
     this.markerLayer = el('div', { class: 'markers' });
     this.markers = this.pois.map((p) => {
-      const b = el('button', { class: 'poi', 'aria-label': `Story: ${p.title}` }, `<span class="tag">${p.title}</span>`);
+      const b = el('button', { class: 'poi', 'aria-label': `Story: ${p.title}` }, `<span class="lz tag">${p.title}</span>`);
       b.addEventListener('click', (e) => { e.stopPropagation(); this.openStory(p); });
       this.markerLayer.append(b);
       return { p, b, shown: false };
@@ -67,51 +68,68 @@ export class UI {
     // story drawer
     this.story = el('aside', { class: 'story', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'story-title', 'aria-hidden': 'true' });
     this.story.innerHTML = `
-      <header><p class="where"></p><h2 id="story-title"></h2></header>
-      <button class="close" aria-label="Close story">${svg('close')}</button>
+      <header><p class="where"></p><button class="lz close" type="button" title="Close (Esc)">Close</button></header>
+      <h2 id="story-title"></h2>
       <div class="body" tabindex="0"></div>`;
     this.story.querySelector('.close').addEventListener('click', () => this.closeStory());
-    // rail
-    this.rail = el('nav', { class: 'rail', 'aria-label': 'Painting controls' });
-    const btn = (name, label, fn, cls = '') => {
-      const b = el('button', { 'aria-label': label, class: cls }, `${svg(name)}<span class="tip">${label}</span>`);
+
+    // navbar: breadcrumbs on the left; the painting's buttons and the menu on the right
+    this.crumbs = el('nav', { class: 'crumbs', 'aria-label': 'Breadcrumbs' }, `<ol>
+      <li><a class="lz" href="${MIRAGE_URL}"><span>Mirage</span></a></li>
+      <li><a class="lz" href="./" aria-current="page"><span>The Garden of Earthly Delights</span></a></li></ol>`);
+    this.bar = el('nav', { class: 'bar', 'aria-label': 'Painting' });
+    const controls = el('div', { class: 'controls', role: 'toolbar', 'aria-label': 'Painting controls' });
+    const lz = (html, fn, attrs = {}) => {
+      const b = el('button', { class: 'lz', type: 'button', ...attrs }, html);
       b.addEventListener('click', fn);
-      this.rail.append(b);
       return b;
     };
-    const sep = (cls = '') => this.rail.append(el('span', { class: `sep ${cls}` }));
-    btn('zoomOut', 'Zoom out', () => this.camera.zoomAt(1 / 1.8, this.camera.w / 2, this.camera.h / 2));
-    btn('zoomIn', 'Zoom in', () => this.camera.zoomAt(1.8, this.camera.w / 2, this.camera.h / 2));
-    btn('fit', 'Whole painting', () => this.camera.flyTo(WORLD_W / 2, WORLD_H / 2, this.camera.fitScale));
-    sep();
-    this.wingsBtn = btn('wings', 'Close the wings', () => this.hooks.onWings?.());
-    this.strokesBtn = btn('strokes', 'Brush strokes', () => this.togglePop('strokes'));
-    sep('opt-btn');
-    this.storiesBtn = btn('stories', 'Story markers', () => this.setStories(!this.storiesOn), 'opt-btn');
-    this.motionBtn = btn('motion', 'Living painting', () => this.setMotion(this.post.life < 0.5), 'opt-btn');
-    this.ageBtn = btn('age', 'Varnish and cracks', () => this.setAge(this.post.age < 0.5), 'opt-btn');
-    btn('full', 'Full screen', () => this.toggleFullscreen(), 'opt-btn');
-    sep();
-    this.soundBtn = btn('soundOff', 'Sound', () => this.togglePop('sound'));
-    this.storiesBtn.setAttribute('aria-pressed', 'true');
-    this.motionBtn.setAttribute('aria-pressed', 'true');
-    this.ageBtn.setAttribute('aria-pressed', 'true');
-    for (const b of [this.strokesBtn, this.soundBtn]) b.setAttribute('aria-expanded', 'false');
+    this.wingsBtn = lz('Exterior', () => this.hooks.onWings?.(), { 'aria-pressed': 'false', title: 'Close the wings' });
+    this.strokesBtn = lz('Strokes', () => this.togglePop('strokes'), { 'aria-haspopup': 'dialog', 'aria-expanded': 'false' });
+    this.soundBtn = lz('Sound', () => this.togglePop('sound'), { 'aria-haspopup': 'dialog', 'aria-expanded': 'false' });
+    controls.append(this.wingsBtn, this.strokesBtn, this.soundBtn);
+    this.menuBtn = lz(svg('menu'), () => this.togglePop('menu'), { class: 'lz icon', 'aria-label': 'Menu', 'aria-haspopup': 'menu', 'aria-expanded': 'false' });
+    this.bar.append(controls, this.menuBtn);
 
-    // sound popover
-    this.soundPop = el('div', { class: 'pop', role: 'dialog', 'aria-label': 'Sound' });
-    this.soundPop.innerHTML = `<h4>Sound</h4>
-      <div role="radiogroup">
-        <button class="opt" role="radio" data-mode="off"><span class="dot"></span><span>Off</span></button>
-        <button class="opt" role="radio" data-mode="nature"><span class="dot"></span><span>Nature<small>Birds, water, wind and fire where you look</small></span></button>
-        <button class="opt" role="radio" data-mode="period"><span class="dot"></span><span>Period music<small>Lute, recorder and viol, about 1500, with the nature sounds</small></span></button>
-      </div>`;
-    for (const o of this.soundPop.querySelectorAll('.opt')) o.addEventListener('click', () => this.chooseSound(o.dataset.mode));
-    // strokes popover
-    this.strokesPop = el('div', { class: 'pop', role: 'dialog', 'aria-label': 'Brush strokes' });
-    this.strokesPop.innerHTML = `<h4>Brush strokes</h4>
+    // zoom
+    this.zoom = el('div', { class: 'zoom', role: 'toolbar', 'aria-label': 'Zoom' });
+    this.zoom.append(
+      lz('−', () => this.camera.zoomAt(1 / 1.8, this.camera.w / 2, this.camera.h / 2), { class: 'lz icon', 'aria-label': 'Zoom out', title: 'Zoom out (-)' }),
+      lz('+', () => this.camera.zoomAt(1.8, this.camera.w / 2, this.camera.h / 2), { class: 'lz icon', 'aria-label': 'Zoom in', title: 'Zoom in (+)' }),
+      lz('Whole painting', () => this.camera.flyTo(WORLD_W / 2, WORLD_H / 2, this.camera.fitScale), { title: 'Whole painting (0)' }),
+    );
+
+    // menu: the Mirage index, then how the painting shows
+    this.menu = el('div', { class: 'panel', role: 'menu', 'aria-label': 'Menu', hidden: '' });
+    this.menu.innerHTML = `<a class="lz" role="menuitem" href="${MIRAGE_URL}">Mirage</a>
+      <div class="sep" role="separator"></div>
+      <button class="lz out" type="button" role="menuitemcheckbox" data-k="stories"><span>Story markers</span><span class="state"></span></button>
+      <button class="lz out" type="button" role="menuitemcheckbox" data-k="motion"><span>Living painting</span><span class="state"></span></button>
+      <button class="lz out" type="button" role="menuitemcheckbox" data-k="age"><span>Varnish and cracks</span><span class="state"></span></button>
+      <button class="lz out" type="button" role="menuitemcheckbox" data-k="full"><span>Full screen</span><span class="state"></span></button>`;
+    this.item = Object.fromEntries([...this.menu.querySelectorAll('[data-k]')].map((b) => [b.dataset.k, b]));
+    this.item.stories.addEventListener('click', () => this.setStories(!this.storiesOn));
+    this.item.motion.addEventListener('click', () => this.setMotion(this.post.life < 0.5));
+    this.item.age.addEventListener('click', () => this.setAge(this.post.age < 0.5));
+    this.item.full.addEventListener('click', () => this.toggleFullscreen());
+    document.addEventListener('fullscreenchange', () => this.check('full', !!document.fullscreenElement));
+    this.menu.addEventListener('keydown', (e) => this.listKeys(e, '[role^="menuitem"]'));
+    // the post pass may start still (prefers-reduced-motion)
+    for (const [k, on] of [['stories', true], ['motion', this.post.life > 0.5], ['age', this.post.age > 0.5], ['full', false]]) this.check(k, on);
+
+    // sound panel
+    this.soundPop = el('div', { class: 'panel', role: 'dialog', 'aria-label': 'Sound', hidden: '' });
+    this.soundPop.innerHTML = `<div role="radiogroup" aria-label="Sound">
+        <button class="lz" type="button" role="radio" data-mode="off">Off</button>
+        <button class="lz" type="button" role="radio" data-mode="nature">Nature</button>
+        <button class="lz" type="button" role="radio" data-mode="period">Period music</button>
+      </div><p class="note"></p>`;
+    for (const o of this.soundPop.querySelectorAll('[role="radio"]')) o.addEventListener('click', () => this.chooseSound(o.dataset.mode));
+    this.soundPop.addEventListener('keydown', (e) => this.listKeys(e, '[role="radio"]'));
+    // strokes panel
+    this.strokesPop = el('div', { class: 'panel strokes', role: 'dialog', 'aria-label': 'Brush strokes', hidden: '' });
+    this.strokesPop.innerHTML = `<p class="big"><b data-k="total">…</b>strokes paint this triptych</p>
       <dl class="stats">
-        <div class="big"><b data-k="total">…</b><span>strokes paint this triptych</span></div>
         <dt>Whole painting</dt><dd data-k="base">…</dd>
         <dt>Deep detail</dt><dd data-k="deep">…</dd>
         <dt>Closed shutters</dt><dd data-k="ext">…</dd>
@@ -119,9 +137,10 @@ export class UI {
         <dt>Painted this visit</dt><dd data-k="session">…</dd>
         <dt>Screen pixels</dt><dd data-k="px">…</dd>
       </dl>
-      <button class="switch" role="switch" aria-checked="false"><span>Show the strokes<small>Each stroke in its own colour</small></span><span class="track"></span></button>
-      <a class="source" href="https://github.com/Shahfarzane/garden-of-earthly-delights" target="_blank" rel="noopener"><span>Source on GitHub<small>Analyzer, painter and sound, MIT licence</small></span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 13 13 7M8 7h5v5"/></svg></a>`;
-    this.strokeSwitch = this.strokesPop.querySelector('.switch');
+      <button class="lz" type="button" aria-pressed="false">Show each stroke in its own colour</button>
+      <div class="sep" role="separator"></div>
+      <a class="lz out" href="${SOURCE_URL}" target="_blank" rel="noopener"><span>Source on GitHub, MIT licence</span>${svg('arrowNe')}</a>`;
+    this.strokeSwitch = this.strokesPop.querySelector('[aria-pressed]');
     this.strokeSwitch.addEventListener('click', () => this.setStrokeView(!this.strokeView));
 
     // minimap
@@ -140,19 +159,42 @@ export class UI {
     this.miniCanvas.addEventListener('pointermove', (e) => { if (miniDrag && e.buttons) miniNav(e, false); });
     this.miniCanvas.addEventListener('pointerup', () => { miniDrag = false; });
 
-    r.append(this.markerLayer, this.mini, this.soundPop, this.strokesPop, this.rail, this.story);
+    r.append(this.markerLayer, this.mini, this.zoom, this.story, this.crumbs, this.bar, this.soundPop, this.strokesPop, this.menu);
     this.setSoundUI();
+    // panels and the drawer start under the navbar, which is taller where its buttons wrap
+    const navBottom = () => document.documentElement.style.setProperty('--nav-bottom', `${Math.max(this.crumbs.offsetHeight, this.bar.offsetHeight)}px`);
+    new ResizeObserver(navBottom).observe(this.bar);
+    navBottom();
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { if (this.openPop) this.togglePop(this.openPop); else this.closeStory(); }
+      if (e.key !== 'Escape') return;
+      if (this.openPop) { const b = this.trigger(this.openPop); this.togglePop(this.openPop); b.focus(); } else this.closeStory();
     });
     window.addEventListener('pointerdown', (e) => {
-      if (this.openPop && !e.target.closest('.pop') && !e.target.closest('.rail')) this.togglePop(this.openPop);
+      if (this.openPop && !e.target.closest('.panel') && !e.target.closest('.bar')) this.togglePop(this.openPop);
     });
+  }
+
+  // a menu toggle: its state as a muted value, as in Mirage's information lists
+  check(k, on) {
+    this.item[k].setAttribute('aria-checked', String(on));
+    this.item[k].querySelector('.state').textContent = on ? 'On' : 'Off';
+  }
+
+  // arrow keys move between the items of an open list (Menu.tsx, usePopover.ts)
+  listKeys(e, selector) {
+    const items = [...e.currentTarget.querySelectorAll(selector)];
+    const i = items.indexOf(document.activeElement);
+    let next = -1;
+    if (e.key === 'ArrowDown') next = i < 0 ? 0 : Math.min(items.length - 1, i + 1);
+    else if (e.key === 'ArrowUp') next = i < 0 ? items.length - 1 : Math.max(0, i - 1);
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = items.length - 1;
+    if (next >= 0) { e.preventDefault(); items[next].focus(); }
   }
 
   setVisible(on) {
     this.enabled = on;
-    for (const n of [this.rail, this.mini, this.markerLayer]) n.style.display = on ? '' : 'none';
+    for (const n of [this.bar, this.zoom, this.mini, this.markerLayer]) n.style.display = on ? '' : 'none';
     if (on && !this.linkChecked) {
       this.linkChecked = true;
       const id = new URLSearchParams(location.hash.slice(1)).get('story');
@@ -161,16 +203,21 @@ export class UI {
     }
   }
 
-  // ---------- popovers ----------
+  // ---------- panels ----------
+  trigger(name) { return { sound: this.soundBtn, strokes: this.strokesBtn, menu: this.menuBtn }[name]; }
+
   togglePop(name) {
-    const pops = { sound: [this.soundPop, this.soundBtn], strokes: [this.strokesPop, this.strokesBtn] };
-    for (const [k, [pop, b]] of Object.entries(pops)) {
+    const pops = { sound: this.soundPop, strokes: this.strokesPop, menu: this.menu };
+    for (const [k, pop] of Object.entries(pops)) {
       const open = k === name && this.openPop !== name;
-      pop.classList.toggle('open', open);
+      pop.hidden = !open;
+      const b = this.trigger(k);
       b.setAttribute('aria-expanded', String(open));
+      b.dataset.state = open ? 'open' : 'closed';
     }
     this.openPop = this.openPop === name ? null : name;
     if (this.openPop === 'strokes') this.updateStats(true);
+    if (this.openPop === 'menu') this.menu.querySelector('[role^="menuitem"]').focus();
   }
 
   chooseSound(mode) {
@@ -181,13 +228,17 @@ export class UI {
   setSound(on) { this.soundOn = on; this.hooks.onSound?.(on); this.setSoundUI(); }
   setSoundUI() {
     const current = this.soundOn ? this.soundMode : 'off';
-    for (const o of this.soundPop.querySelectorAll('.opt')) o.setAttribute('aria-checked', String(o.dataset.mode === current));
-    this.soundBtn.innerHTML = `${svg(this.soundOn ? 'soundOn' : 'soundOff')}<span class="tip">Sound</span>`;
+    for (const o of this.soundPop.querySelectorAll('[role="radio"]')) o.setAttribute('aria-checked', String(o.dataset.mode === current));
+    this.soundPop.querySelector('.note').textContent = SOUND_NOTE[current];
+    // on, the lozenge is filled, as Mirage's Sound button
+    this.soundBtn.toggleAttribute('data-on', this.soundOn);
+    this.soundBtn.setAttribute('aria-label', `Sound: ${{ off: 'off', nature: 'nature', period: 'period music' }[current]}`);
   }
 
   setStrokeView(on) {
     this.strokeView = on;
-    this.strokeSwitch.setAttribute('aria-checked', String(on));
+    this.strokeSwitch.setAttribute('aria-pressed', String(on));
+    this.strokesBtn.toggleAttribute('data-on', on);
     this.hooks.onStrokeView?.(on);
   }
 
@@ -242,10 +293,13 @@ export class UI {
     this.hooks.onStoryClose?.();
   }
 
+  // The screen the drawer leaves to the painting: its columns and a margin on each side, or on
+  // tablets and phones the sheet at the foot.
   drawerInset() {
     if (!this.current) return { x: 0, y: 0 };
-    if (window.innerWidth <= 720) return { x: 0, y: Math.min(window.innerHeight * 0.62, 560) + 8 };
-    return { x: Math.min(420, window.innerWidth - 24) + 24, y: 0 };
+    const margin = parseFloat(getComputedStyle(this.story).right) || 0;
+    if (window.innerWidth <= 768) return { x: 0, y: this.story.offsetHeight + margin };
+    return { x: this.story.offsetWidth + 2 * margin, y: 0 };
   }
 
   flyToPoi(p) {
@@ -259,22 +313,21 @@ export class UI {
   // ---------- toggles ----------
   setStories(on) {
     this.storiesOn = on;
-    this.storiesBtn.setAttribute('aria-pressed', String(on));
+    this.check('stories', on);
     this.markerLayer.classList.toggle('hidden', !on);
   }
   setMotion(on) {
     this.post.life = on ? 1 : 0;
-    this.motionBtn.setAttribute('aria-pressed', String(on));
+    this.check('motion', on);
     this.hooks.onMotion?.(on);
   }
   setAge(on) {
     this.post.age = on ? 1 : 0;
-    this.ageBtn.setAttribute('aria-pressed', String(on));
+    this.check('age', on);
   }
   setClosed(closed) {
     this.closed = closed;
-    this.wingsBtn.querySelector('.tip').textContent = closed ? 'Open the wings' : 'Close the wings';
-    this.wingsBtn.setAttribute('aria-label', closed ? 'Open the wings' : 'Close the wings');
+    this.wingsBtn.title = closed ? 'Open the wings' : 'Close the wings';
     this.wingsBtn.setAttribute('aria-pressed', String(closed));
     this.markerLayer.style.visibility = closed ? 'hidden' : '';
     if (closed) this.closeStory();
